@@ -1,5 +1,5 @@
 // ==========================================================
-// TOKYO FASHION MARKET (Demo) — main.js
+// TOKYO FASHION MARKET — main.js
 // ==========================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -175,7 +175,7 @@ function setupContactForm() {
     });
     if (!valid) return;
 
-    // デモのため送信処理はなし。完了メッセージのみ表示
+    // 送信先未接続。完了メッセージのみ表示（フォーム連携は実装時に追加）
     form.reset();
     done.hidden = false;
     setTimeout(() => (done.hidden = true), 5000);

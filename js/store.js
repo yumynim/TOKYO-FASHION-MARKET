@@ -1,5 +1,5 @@
 // ==========================================================
-// ストア機能（デモ） — カート / 商品モーダル / チケットモーダル
+// ストア機能 — カート / 商品モーダル / チケットモーダル
 // 決済は行わない。カート内容は localStorage に保存。
 // ==========================================================
 
@@ -69,7 +69,7 @@ const Store = {
         <div class="cart-subtotal"><span>小計</span><span id="cartSubtotal">￥0</span></div>
         <p class="cart-tax-note">消費税抜き。お会計時に消費税（10%）が加算されます。</p>
         <button type="button" class="btn btn-solid" id="cartCheckout">ご購入手続きへ</button>
-        <p class="cart-checkout-done" id="cartDone" hidden>デモサイトのため、実際の決済は行われません。</p>
+        <p class="cart-checkout-done" id="cartDone" hidden>オンライン決済は現在準備中です。</p>
       </div>`;
     document.body.appendChild(drawer);
 
@@ -153,7 +153,7 @@ const Store = {
         <button type="button" class="qty-btn" data-q="inc" aria-label="数量を増やす">＋</button>
       </div>
       <button type="button" class="btn btn-solid" id="pAdd">カートに追加</button>
-      <p class="modal-note">※ デモサイトのため、実際の購入はできません。</p>`);
+      <p class="modal-note">※ オンライン購入は現在準備中です。</p>`);
 
     const qtyEl = modal.querySelector("#pQty");
     modal.querySelectorAll(".qty-btn").forEach((b) =>
@@ -188,7 +188,7 @@ const Store = {
       </div>
       <p class="modal-meta">合計: <strong id="tTotal">￥${PRICE.toLocaleString("ja-JP")}</strong>（消費税抜き）</p>
       <button type="button" class="btn btn-solid" id="tBuy">購入する</button>
-      <p class="modal-note">※ 支払方法: クレジットカード / コンビニ払い / QRコード決済<br>※ デモサイトのため、実際の購入はできません。</p>`);
+      <p class="modal-note">※ 支払方法: クレジットカード / コンビニ払い / QRコード決済<br>※ オンライン購入は現在準備中です。</p>`);
 
     const qtyEl = modal.querySelector("#tQty");
     const totalEl = modal.querySelector("#tTotal");
@@ -202,7 +202,7 @@ const Store = {
     modal.querySelector("#tBuy").addEventListener("click", () => {
       modal.innerHTML = `
         <button type="button" class="modal-close" aria-label="閉じる">✕</button>
-        <p class="modal-done">デモサイトのため、チケット購入は行われません。<br>実際のイベントは公式サイトをご確認ください。</p>`;
+        <p class="modal-done">チケットのオンライン販売は現在準備中です。<br>最新情報はInstagramをご確認ください。</p>`;
       modal.querySelector(".modal-close").addEventListener("click", () => UI.closeModal());
     });
   },

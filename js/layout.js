@@ -70,24 +70,13 @@ function renderFooter() {
   <div class="container footer-grid">
     <div class="footer-brand">
       <p class="footer-logo">TOKYO FASHION MARKET</p>
-      <p class="footer-copy-lead">インフルエンサーフリーマーケット（デモサイト）</p>
+      <p class="footer-copy-lead">ファッションインフルエンサーが集う、東京のPOPUP・フリーマーケット</p>
       <div class="footer-social">
         <a href="https://www.instagram.com/tokyo_fashion_market/" target="_blank" rel="noopener" aria-label="Instagram">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="5"/>
             <circle cx="12" cy="12" r="4"/>
             <circle cx="17.2" cy="6.8" r="0.6" fill="currentColor"/>
-          </svg>
-        </a>
-        <a href="#" aria-label="TikTok（デモ）">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path d="M14 4v9.5a4 4 0 1 1-4-4"/>
-            <path d="M14 5.5c.8 2 2.4 3.3 4.5 3.5"/>
-          </svg>
-        </a>
-        <a href="#" aria-label="X（デモ）">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path d="M5 5l14 14M19 5L5 19"/>
           </svg>
         </a>
       </div>
@@ -111,7 +100,7 @@ function renderFooter() {
       </div>
     </nav>
   </div>
-  <p class="copyright">Copyright © Demo Site</p>`;
+  <p class="copyright">Copyright © TOKYO FASHION MARKET</p>`;
 }
 
 // 注入

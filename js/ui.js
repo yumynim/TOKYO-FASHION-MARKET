@@ -38,7 +38,7 @@ const UI = {
     }
   },
 
-  // ---------- ログインモーダル（デモ） ----------
+  // ---------- ログインモーダル ----------
   openLogin() {
     const modal = this.openModal(`
       <h2 class="modal-title">アカウント</h2>
@@ -56,7 +56,7 @@ const UI = {
           <input type="password" id="lg-pass" required minlength="6" autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-solid" id="loginSubmit">ログイン</button>
-        <p class="modal-note">※ デモサイトのため、実際の認証は行われません。</p>
+        <p class="modal-note">※ ログイン機能は現在準備中です。</p>
       </form>`);
 
     modal.querySelectorAll(".login-tab").forEach((tab) => {
@@ -80,7 +80,7 @@ const UI = {
       if (!valid) return;
       modal.innerHTML = `
         <button type="button" class="modal-close" aria-label="閉じる">✕</button>
-        <p class="modal-done">デモサイトのため、ログイン機能はご利用いただけません。</p>`;
+        <p class="modal-done">ログイン機能は現在準備中です。今しばらくお待ちください。</p>`;
       modal.querySelector(".modal-close").addEventListener("click", () => UI.closeModal());
     });
   },
