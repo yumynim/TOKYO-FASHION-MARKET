@@ -38,8 +38,11 @@ function renderHeader() {
   return `
   <div class="header-inner">
     <a class="brand" href="index.html">
-      <span class="brand-mark">R</span>
-      <span class="brand-text">RE FASHION MARKET</span>
+      <span class="brand-mark">TFM</span>
+      <span class="brand-logo">
+        <span class="brand-text">TFM</span>
+        <span class="brand-sub">TOKYO FASHION MARKET</span>
+      </span>
     </a>
     <nav class="global-nav" id="globalNav" aria-label="メインメニュー">
       <ul>
@@ -70,7 +73,7 @@ function renderFooter() {
   return `
   <div class="container footer-grid">
     <div class="footer-brand">
-      <p class="footer-logo">RE FASHION MARKET</p>
+      <p class="footer-logo">TOKYO FASHION MARKET</p>
       <p class="footer-copy-lead">インフルエンサーフリーマーケット（デモサイト）</p>
       <div class="footer-social">
         <a href="#" aria-label="Instagram（デモ）">

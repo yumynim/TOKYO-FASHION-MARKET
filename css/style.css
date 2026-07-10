@@ -13,6 +13,8 @@
   --border: 1px solid var(--black);
   --font-jp: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
   --font-en: "Oswald", var(--font-jp);
+  /* ロゴ「TOKYO FASHION MARKET」アイコンの字体に寄せた幾何学サンセリフ */
+  --font-brand: "Montserrat", "Helvetica Neue", var(--font-jp);
   --header-h: 64px;
 }
 
@@ -75,14 +77,33 @@ button { font-family: inherit; cursor: pointer; }
   flex-wrap: wrap;
   gap: 8px 20px;
 }
-.brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.brand-logo { display: flex; flex-direction: column; }
+/* ロゴアイコン（黒地に TFM モノグラム） */
 .brand-mark {
-  width: 34px; height: 34px;
+  width: 38px; height: 38px;
   display: grid; place-items: center;
   background: var(--black); color: var(--white);
-  font-family: var(--font-en); font-weight: 700; font-size: 18px;
+  font-family: var(--font-brand); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.04em;
 }
-.brand-text { font-family: var(--font-en); font-weight: 600; font-size: 16px; letter-spacing: 0.12em; }
+/* ワードマーク（アイコンの字体に寄せた Montserrat） */
+.brand-text {
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.18em;
+  line-height: 1;
+}
+.brand-sub {
+  display: block;
+  font-family: var(--font-brand);
+  font-weight: 500;
+  font-size: 8.5px;
+  letter-spacing: 0.28em;
+  color: var(--gray-4);
+  margin-top: 3px;
+}
 
 .global-nav { order: 3; flex-basis: 100%; }
 .global-nav > ul { display: flex; gap: 2px; align-items: center; flex-wrap: wrap; justify-content: center; }
@@ -143,46 +164,127 @@ button { font-family: inherit; cursor: pointer; }
 .nav-toggle.is-open span:nth-child(2) { opacity: 0; }
 .nav-toggle.is-open span:nth-child(3) { top: 20px; transform: rotate(-45deg); }
 
-/* ---------- Hero ---------- */
+/* ---------- Hero（回転スライドショー＋グレーフィルター＋TFM出現） ---------- */
 .hero {
   position: relative;
-  min-height: 78vh;
+  min-height: 92vh;
   display: grid;
   place-items: center;
   text-align: center;
   overflow: hidden;
-  background: var(--white);
+  background: var(--black);
   border-bottom: var(--border);
 }
-.hero-bg { position: absolute; inset: 0; }
-.hero-stripe {
-  position: absolute;
-  top: -20%; bottom: -20%;
-  width: 18vw;
-  background: var(--gray-1);
-  transform: rotate(12deg);
-}
-.hero-stripe:nth-child(1) { left: 4%; }
-.hero-stripe:nth-child(2) { left: 42%; background: var(--gray-2); }
-.hero-stripe:nth-child(3) { left: 80%; }
 
-.hero-inner { position: relative; padding: 80px 24px; }
+/* 背景スライドショー */
+.hero-slideshow { position: absolute; inset: 0; overflow: hidden; }
+.hero-slide {
+  position: absolute;
+  inset: -6%;                     /* ゆっくり動いても端が見えないよう少し広げる */
+  background-size: cover;
+  background-position: center;
+  /* かっこいい灰色フィルター: グレースケール＋やや暗め＋コントラスト */
+  filter: grayscale(100%) contrast(1.08) brightness(0.72);
+  opacity: 0;
+  will-change: transform, opacity;
+  /* 3枚を21秒で切り替え（各7秒）＋ゆっくりズーム回転（Ken Burns） */
+  animation: heroFade 21s linear infinite, heroPan 21s ease-in-out infinite;
+}
+.hero-slide:nth-child(1) { animation-delay: 0s, 0s; }
+.hero-slide:nth-child(2) { animation-delay: 7s, 7s; }
+.hero-slide:nth-child(3) { animation-delay: 14s, 14s; }
+
+/* ★ 背景写真: 差し替えるときは img/hero/ の各ファイルを置き換えてください */
+.hero-slide-1 { background-image: url("../img/hero/hero1.jpg"); }
+.hero-slide-2 { background-image: url("../img/hero/hero2.jpg"); }
+.hero-slide-3 { background-image: url("../img/hero/hero3.jpg"); }
+
+@keyframes heroFade {
+  0%    { opacity: 0; }
+  4%    { opacity: 1; }
+  30%   { opacity: 1; }
+  36%   { opacity: 0; }
+  100%  { opacity: 0; }
+}
+@keyframes heroPan {
+  0%   { transform: scale(1.05) rotate(0deg); }
+  36%  { transform: scale(1.16) rotate(1.2deg); }
+  100% { transform: scale(1.16) rotate(1.2deg); }
+}
+
+/* 灰色フィルターの重ね（中央を少し明るく、周辺を暗く） */
+.hero-filter {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(20,20,20,0.15) 0%, rgba(10,10,10,0.55) 70%, rgba(10,10,10,0.8) 100%),
+    linear-gradient(180deg, rgba(13,13,13,0.35) 0%, rgba(13,13,13,0.1) 45%, rgba(13,13,13,0.5) 100%);
+}
+
+.hero-inner { position: relative; padding: 80px 24px; color: var(--white); }
 .hero-kicker {
-  font-family: var(--font-en);
-  letter-spacing: 0.5em;
-  font-size: 14px;
-  color: var(--gray-4);
-  margin-bottom: 16px;
+  font-family: var(--font-brand);
+  letter-spacing: 0.55em;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.72);
+  margin-bottom: 22px;
+  padding-left: 0.55em;
+  /* 少し遅れてふわっと */
+  animation: heroKicker 1.4s ease 0.2s both;
 }
-.hero-title {
-  font-family: var(--font-en);
-  font-size: clamp(52px, 10vw, 120px);
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: 0.04em;
-  margin-bottom: 24px;
+/* TFM ロゴが中心から出てくる */
+.hero-logo {
+  font-family: var(--font-brand);
+  font-size: clamp(72px, 16vw, 190px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+  color: var(--white);
+  margin-bottom: 14px;
+  text-shadow: 0 4px 40px rgba(0,0,0,0.4);
+  animation: heroEmerge 1.8s cubic-bezier(0.2, 0.7, 0.15, 1) both;
 }
-.hero-lead { font-size: 15px; margin-bottom: 40px; color: var(--gray-5); }
+.hero-wordmark {
+  font-family: var(--font-brand);
+  font-weight: 600;
+  font-size: clamp(13px, 2.4vw, 20px);
+  letter-spacing: 0.42em;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 40px;
+  padding-left: 0.42em;
+  animation: heroKicker 1.6s ease 0.7s both;
+}
+.hero-lead {
+  font-size: 15px;
+  margin-bottom: 40px;
+  color: rgba(255,255,255,0.85);
+  animation: heroKicker 1.6s ease 0.9s both;
+}
+.hero .btn-solid {
+  background: var(--white);
+  color: var(--black);
+  border-color: var(--white);
+  animation: heroKicker 1.6s ease 1.1s both;
+}
+.hero .btn-solid:hover { background: rgba(255,255,255,0.85); }
+
+/* 中心から拡大しながら出現 */
+@keyframes heroEmerge {
+  0%   { opacity: 0; transform: scale(0.62); letter-spacing: 0.5em; filter: blur(10px); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); letter-spacing: 0.06em; filter: blur(0); }
+}
+@keyframes heroKicker {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* アニメを控えたいユーザー向け */
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide { animation: heroFade 21s linear infinite; }
+  .hero-logo, .hero-kicker, .hero-wordmark, .hero-lead, .hero .btn-solid { animation: none; }
+}
 
 /* ---------- Sections (common) ---------- */
 .section { padding: 96px 0; }
@@ -476,7 +578,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 72px 0 0;
 }
 .footer-grid { display: flex; gap: 64px; flex-wrap: wrap; }
-.footer-logo { font-family: var(--font-en); font-size: 22px; font-weight: 700; letter-spacing: 0.14em; }
+.footer-logo { font-family: var(--font-brand); font-size: 20px; font-weight: 700; letter-spacing: 0.24em; }
 .footer-copy-lead { font-size: 12.5px; color: var(--gray-3); margin-top: 10px; }
 .footer-nav { display: flex; gap: 64px; flex-wrap: wrap; margin-left: auto; }
 .footer-nav h3 {

@@ -1,5 +1,5 @@
 // ==========================================================
-// RE FASHION MARKET (Demo) — main.js
+// TOKYO FASHION MARKET (Demo) — main.js
 // ==========================================================
 
 document.addEventListener("DOMContentLoaded", () => {

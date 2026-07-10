@@ -2,3 +2,7 @@
 Thumbs.db
 node_modules/
 .vercel
+
+# 元素材（作業用・任意）
+資料/.DS_Store
+**/.DS_Store
