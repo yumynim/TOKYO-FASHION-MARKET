@@ -203,19 +203,30 @@ button { font-family: inherit; cursor: pointer; }
 
 .hero-inner { position: relative; padding: 80px 24px; color: var(--white); }
 /* TOKYO FASHION MARKET ロゴが中心から出てくる */
-.hero-logo-wrap { margin: 0; }
+.hero-logo-wrap { margin: 0; position: relative; display: inline-block; }
+/* ロゴ背後の暗いにじみ（白背景の写真でも文字が読めるように） */
+.hero-logo-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -40% -18%;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(10,10,10,0.55) 0%, rgba(10,10,10,0.28) 45%, rgba(10,10,10,0) 72%);
+  pointer-events: none;
+}
 .hero-logo-img {
   width: min(72vw, 640px);
   height: auto;
-  filter: drop-shadow(0 6px 40px rgba(0,0,0,0.45));
+  display: block;
+  /* filter は使わない（iOS で透過PNGがアニメ後に白飛びするため）
+     opacity と transform のみでアニメーション */
   animation: heroEmerge 1.9s cubic-bezier(0.2, 0.7, 0.15, 1) both;
 }
 
 /* 中心から拡大しながら出現 */
 @keyframes heroEmerge {
-  0%   { opacity: 0; transform: scale(0.62); filter: blur(10px) drop-shadow(0 6px 40px rgba(0,0,0,0.45)); }
+  0%   { opacity: 0; transform: scale(0.62); }
   60%  { opacity: 1; }
-  100% { opacity: 1; transform: scale(1); filter: blur(0) drop-shadow(0 6px 40px rgba(0,0,0,0.45)); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* アニメを控えたいユーザー向け */

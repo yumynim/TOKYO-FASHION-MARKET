@@ -20,22 +20,22 @@
 // 記入例: { name: "8日 ◯◯ホール（OSAKA）", date: "2026-08-08", dateLabel: "8月8日(土)" },
 const EVENTS = [
   {
-    name: "19日HEPFIVE HEPHALL（OSAKA）",
+    name: "19日 ◯◯ホール（TOKYO）",
     date: "2026-07-19",
     dateLabel: "7月19日(日)",
   },
   {
-    name: "20日HEPFIVE HEPHALL（OSAKA）",
+    name: "20日 ◯◯ホール（TOKYO）",
     date: "2026-07-20",
     dateLabel: "7月20日(月)",
   },
   {
-    name: "26日 1部 東京モード学園（TOKYO）",
+    name: "26日 1部 ◯◯（TOKYO）",
     date: "2026-07-26",
     dateLabel: "7月26日(日)",
   },
   {
-    name: "26日 2部 東京モード学園（TOKYO）",
+    name: "26日 2部 ◯◯（TOKYO）",
     date: "2026-07-26",
     dateLabel: "7月26日(日)",
   },
