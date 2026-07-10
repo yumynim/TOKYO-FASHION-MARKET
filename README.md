@@ -47,6 +47,18 @@
 - **画像**: すべてCSSのプレースホルダー（元サイトの画像は使用していません）
 - **フォーム**: 送信処理なし（バリデーション＋完了メッセージ表示のみのデモ）
 
+
+## SEO / 公開ドメインについて
+
+本番用にSEOを有効化済み（noindex解除・meta description・OGP・Twitterカード・JSON-LD構造化データ・sitemap.xml・robots.txt）。
+
+⚠️ **公開ドメインが決まったら要更新**（現在は仮ドメイン `https://tokyo-fashion-market.vercel.app` で設定）：
+1. 全HTMLの `https://tokyo-fashion-market.vercel.app` を実ドメインに一括置換（canonical / og:url / og:image / JSON-LD）
+2. `robots.txt` と `sitemap.xml` の同URLも置換
+3. 独自ドメインを使う場合はVercelのドメイン設定も行う
+
+SNSシェア画像は `img/ogp.jpg`（1200×630）。差し替え可。
+
 ## Vercelへのデプロイ
 
 1. VercelでこのGitHubリポジトリをImport

@@ -37,12 +37,8 @@ function renderHeader() {
 
   return `
   <div class="header-inner">
-    <a class="brand" href="index.html">
-      <span class="brand-mark">TFM</span>
-      <span class="brand-logo">
-        <span class="brand-text">TFM</span>
-        <span class="brand-sub">TOKYO FASHION MARKET</span>
-      </span>
+    <a class="brand" href="index.html" aria-label="TOKYO FASHION MARKET ホーム">
+      <img class="brand-logo-img" src="img/tfm-logo.png" alt="TOKYO FASHION MARKET" width="1070" height="274">
     </a>
     <nav class="global-nav" id="globalNav" aria-label="メインメニュー">
       <ul>
@@ -76,7 +72,7 @@ function renderFooter() {
       <p class="footer-logo">TOKYO FASHION MARKET</p>
       <p class="footer-copy-lead">インフルエンサーフリーマーケット（デモサイト）</p>
       <div class="footer-social">
-        <a href="#" aria-label="Instagram（デモ）">
+        <a href="https://www.instagram.com/tokyo_fashion_market/" target="_blank" rel="noopener" aria-label="Instagram">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="5"/>
             <circle cx="12" cy="12" r="4"/>
