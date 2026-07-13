@@ -7,18 +7,18 @@
 const NAV_ITEMS = [
   { href: "index.html", label: "ホーム" },
   { href: "goods.html", label: "グッズ販売【郵送】" },
-  { href: "hagi.html", label: "株式会社HAGI" },
+  { href: "hagi.html", label: "企業理念" },
+  { href: "event.html", label: "イベント" },
+  { href: "tokushoho.html", label: "特定商取引" },
+];
+
+// 「その他」ドロップダウンの中身（上に出さない項目はここに集約）
+const NAV_SUB_ITEMS = [
   { href: "sponsorship.html", label: "ブース出店&サンプリング" },
-  { href: "event.html", label: "過去のイベント" },
   { href: "recruit.html", label: "採用情報" },
   { href: "oubo-form.html", label: "応募フォーム" },
   { href: "volunteer.html", label: "ボランティアスタッフ" },
   { href: "news.html", label: "ニュース" },
-  { href: "tokushoho.html", label: "特定商取引法に基づく表示" },
-];
-
-// 「その他」ドロップダウンの中身
-const NAV_SUB_ITEMS = [
   { href: "sdgs.html", label: "SDGsの取り組み" },
   { href: "influencer-casting.html", label: "インフルエンサーキャスティング" },
   { href: "sample-sale.html", label: "サンプルセール" },

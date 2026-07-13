@@ -152,7 +152,7 @@ button { font-family: inherit; cursor: pointer; }
   place-items: center;
   text-align: center;
   overflow: hidden;
-  background: var(--black);
+  background: var(--white);
   border-bottom: var(--border);
 }
 
@@ -163,8 +163,8 @@ button { font-family: inherit; cursor: pointer; }
   inset: -6%;                     /* ゆっくり動いても端が見えないよう少し広げる */
   background-size: cover;
   background-position: center;
-  /* かっこいい灰色フィルター: グレースケール＋やや暗め＋コントラスト */
-  filter: grayscale(100%) contrast(1.08) brightness(0.72);
+  /* 灰色フィルター: グレースケール＋明るめ（白モヤと合わせる） */
+  filter: grayscale(100%) contrast(0.98) brightness(1.12);
   opacity: 0;
   will-change: transform, opacity;
   /* 3枚を21秒で切り替え（各7秒）＋ゆっくりズーム回転（Ken Burns） */
@@ -192,25 +192,25 @@ button { font-family: inherit; cursor: pointer; }
   100% { transform: scale(1.16) rotate(1.2deg); }
 }
 
-/* 灰色フィルターの重ね（中央を少し明るく、周辺を暗く） */
+/* 白モヤの重ね（中央を少し透かし、周辺を白く） */
 .hero-filter {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at center, rgba(20,20,20,0.15) 0%, rgba(10,10,10,0.55) 70%, rgba(10,10,10,0.8) 100%),
-    linear-gradient(180deg, rgba(13,13,13,0.35) 0%, rgba(13,13,13,0.1) 45%, rgba(13,13,13,0.5) 100%);
+    radial-gradient(ellipse at center, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.55) 70%, rgba(255,255,255,0.82) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.2) 45%, rgba(255,255,255,0.55) 100%);
 }
 
-.hero-inner { position: relative; padding: 80px 24px; color: var(--white); }
+.hero-inner { position: relative; padding: 80px 24px; color: var(--black); }
 /* TOKYO FASHION MARKET ロゴが中心から出てくる */
 .hero-logo-wrap { margin: 0; position: relative; display: inline-block; }
-/* ロゴ背後の暗いにじみ（白背景の写真でも文字が読めるように） */
+/* ロゴ背後の白いにじみ（暗い写真でも黒文字が読めるように） */
 .hero-logo-wrap::before {
   content: "";
   position: absolute;
   inset: -40% -18%;
   z-index: -1;
-  background: radial-gradient(ellipse at center, rgba(10,10,10,0.55) 0%, rgba(10,10,10,0.28) 45%, rgba(10,10,10,0) 72%);
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 45%, rgba(255,255,255,0) 72%);
   pointer-events: none;
 }
 .hero-logo-img {
