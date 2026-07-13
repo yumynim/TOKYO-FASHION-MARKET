@@ -21,7 +21,7 @@ const PAGE_INITS = {
         <div class="goods-body">
           <h3 class="goods-name">${g.name}</h3>
           <p class="goods-price-label">価格</p>
-          <p class="goods-price">￥${g.price.toLocaleString("ja-JP")} <span class="goods-tax">消費税抜き</span></p>
+          <p class="goods-price">￥${g.price.toLocaleString("ja-JP")} <span class="goods-tax">税込</span></p>
           <button type="button" class="goods-add" data-index="${i}">カートに追加</button>
         </div>
       </article>`
@@ -43,7 +43,7 @@ const PAGE_INITS = {
     });
   },
 
-  // ---------- 株式会社HAGI ----------
+  // ---------- 企業理念（hagi） ----------
   hagi() {
     // メンバー（ダミー名）
     const MEMBERS = [

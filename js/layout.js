@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "goods.html", label: "グッズ販売【郵送】" },
   { href: "hagi.html", label: "企業理念" },
   { href: "event.html", label: "イベント" },
+  { href: "news.html", label: "ニュース" },
   { href: "tokushoho.html", label: "特定商取引" },
 ];
 
@@ -18,7 +19,6 @@ const NAV_SUB_ITEMS = [
   { href: "recruit.html", label: "採用情報" },
   { href: "oubo-form.html", label: "応募フォーム" },
   { href: "volunteer.html", label: "ボランティアスタッフ" },
-  { href: "news.html", label: "ニュース" },
   { href: "sdgs.html", label: "SDGsの取り組み" },
   { href: "influencer-casting.html", label: "インフルエンサーキャスティング" },
   { href: "sample-sale.html", label: "サンプルセール" },
@@ -93,7 +93,7 @@ function renderFooter() {
       <div>
         <h3>会社情報</h3>
         <ul>
-          <li><a href="hagi.html">株式会社HAGIへの取材・メディア掲載はこちら</a></li>
+          <li><a href="hagi.html">企業理念・取材/メディア掲載はこちら</a></li>
           <li><a href="recruit.html">採用情報</a></li>
           <li><a href="tokushoho.html">特定商取引法に基づく表示</a></li>
         </ul>

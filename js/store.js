@@ -67,7 +67,7 @@ const Store = {
       <div class="cart-items" id="cartItems"></div>
       <div class="cart-foot">
         <div class="cart-subtotal"><span>小計</span><span id="cartSubtotal">￥0</span></div>
-        <p class="cart-tax-note">消費税抜き。お会計時に消費税（10%）が加算されます。</p>
+        <p class="cart-tax-note">価格はすべて税込です。別途送料がかかる場合があります。</p>
         <button type="button" class="btn btn-solid" id="cartCheckout">ご購入手続きへ</button>
         <p class="cart-checkout-done" id="cartDone" hidden>オンライン決済は現在準備中です。</p>
       </div>`;
@@ -144,7 +144,7 @@ const Store = {
     const modal = UI.openModal(`
       <div class="modal-product-visual">${letter}</div>
       <h2 class="modal-title">${g.name}</h2>
-      <p class="modal-price">￥${g.price.toLocaleString("ja-JP")} <span class="goods-tax">消費税抜き</span></p>
+      <p class="modal-price">￥${g.price.toLocaleString("ja-JP")} <span class="goods-tax">税込</span></p>
       <p class="modal-meta">郵送でお届けします。</p>
       <div class="qty-row">
         <span class="qty-label">数量</span>
@@ -186,7 +186,7 @@ const Store = {
         <span class="qty-value" id="tQty">1</span>
         <button type="button" class="qty-btn" data-q="inc" aria-label="枚数を増やす">＋</button>
       </div>
-      <p class="modal-meta">合計: <strong id="tTotal">￥${PRICE.toLocaleString("ja-JP")}</strong>（消費税抜き）</p>
+      <p class="modal-meta">合計: <strong id="tTotal">￥${PRICE.toLocaleString("ja-JP")}</strong>（税込）</p>
       <button type="button" class="btn btn-solid" id="tBuy">購入する</button>
       <p class="modal-note">※ 支払方法: クレジットカード / コンビニ払い / QRコード決済<br>※ オンライン購入は現在準備中です。</p>`);
 

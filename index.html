@@ -92,11 +92,16 @@
     <section class="section section-goods section-invert" id="goods">
       <div class="container">
         <h2 class="section-title">"インフルエンサーグッズ購入"</h2>
-        <p class="section-note">チェキ【郵送】 — 表示価格は消費税抜きです。</p>
-        <div class="goods-grid" id="goodsGrid">
-          <!-- JSで生成 -->
+        <p class="section-note">チェキ【郵送】 — 表示価格は税込です。</p>
+        <!-- PC: カルーセル（矢印でスクロール） / スマホ: 2列8個＋もっと見る -->
+        <div class="goods-carousel" id="goodsCarousel">
+          <button type="button" class="goods-arrow goods-arrow-prev" id="goodsPrev" aria-label="前へ">‹</button>
+          <div class="goods-grid" id="goodsGrid">
+            <!-- JSで生成 -->
+          </div>
+          <button type="button" class="goods-arrow goods-arrow-next" id="goodsNext" aria-label="次へ">›</button>
         </div>
-        <div class="section-more">
+        <div class="section-more" id="goodsMoreWrap">
           <button type="button" class="btn btn-outline-invert" id="goodsMore">もっと見る</button>
         </div>
       </div>
@@ -161,7 +166,7 @@
     <section class="section section-company section-invert" id="company">
       <div class="container company-flex">
         <div class="company-text">
-          <h2 class="section-title">株式会社HAGI</h2>
+          <h2 class="section-title">企業理念</h2>
           <!-- ★ 会社紹介文: 下の段落を書き換え -->
           <p>
             インフルエンサーとファンをつなぐフリーマーケットイベントを企画・運営しています。

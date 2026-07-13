@@ -348,6 +348,68 @@ button { font-family: inherit; cursor: pointer; }
 .goods-price { font-size: 16px; font-weight: 900; }
 .goods-tax { font-size: 10.5px; color: var(--gray-4); }
 
+/* ---------- トップのグッズ: スマホ=2列8個＋もっと見る / PC=カルーセル ---------- */
+.goods-carousel { position: relative; }
+.goods-arrow { display: none; }
+/* スマホ（既定）: 2列グリッド、8個まで表示 */
+.section-goods .goods-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.section-goods .goods-card { display: none; }
+.section-goods .goods-card.is-visible { display: flex; }
+
+/* PC: 横スクロールのカルーセル（矢印で送る・全件表示） */
+@media (min-width: 768px) {
+  .section-goods .goods-grid {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    gap: 20px;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    padding: 4px 4px 16px;
+    scrollbar-width: thin;
+  }
+  .section-goods .goods-card {
+    display: flex;
+    flex: 0 0 210px;
+    scroll-snap-align: start;
+  }
+  #goodsMoreWrap { display: none; }
+  .goods-arrow {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 42%;
+    transform: translateY(-50%);
+    width: 46px; height: 46px;
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 5;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+  .goods-arrow-prev { left: -10px; }
+  .goods-arrow-next { right: -10px; }
+  .goods-arrow:hover { background: var(--gray-1); }
+}
+
+/* ---------- グッズ販売ページ: チェキ注意事項 ---------- */
+.goods-notice { border: var(--border); padding: 28px 30px; margin-top: 8px; }
+.goods-notice-title { font-size: 16px; font-weight: 900; margin-bottom: 16px; letter-spacing: 0.04em; }
+.goods-notice-list { list-style: none; padding: 0; margin: 0; }
+.goods-notice-list li { position: relative; padding-left: 18px; margin-bottom: 10px; font-size: 14px; line-height: 1.7; }
+.goods-notice-list li::before { content: "・"; position: absolute; left: 0; }
+.goods-benefit { margin-top: 20px; padding: 18px 22px; background: var(--gray-1); }
+.goods-benefit-head { font-weight: 700; margin-bottom: 8px; }
+.goods-benefit ul { list-style: none; padding: 0; margin: 0; }
+.goods-benefit li { font-size: 14px; padding: 3px 0; }
+
 /* ---------- News ---------- */
 .news-list { max-width: 860px; margin: 56px auto 0; border-top: var(--border); }
 .news-item {
@@ -426,17 +488,36 @@ button { font-family: inherit; cursor: pointer; }
 }
 .logo-track {
   display: flex;
-  gap: 48px;
+  gap: 28px;
   width: max-content;
-  animation: marquee 30s linear infinite;
+  align-items: center;
+  animation: marquee 45s linear infinite;
 }
-.logo-track span {
+/* 丸アバター（参考サイトの出店インフルエンサー表示に寄せた横スクロール） */
+.influencer-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 92px;
+}
+.influencer-photo {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, var(--gray-2), var(--gray-1) 60%, var(--gray-3));
+  border: 1px solid var(--gray-2);
+  display: grid;
+  place-items: center;
   font-family: var(--font-en);
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--gray-4);
+}
+.influencer-name {
+  font-size: 11px;
   color: var(--gray-4);
   white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 @keyframes marquee {
   from { transform: translateX(0); }

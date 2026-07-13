@@ -29,24 +29,16 @@ function renderEvents() {
   if (!grid) return;
 
   grid.innerHTML = EVENTS.map((ev, i) => {
-    const d = daysUntil(ev.date);
-    let badge;
-    if (d > 0) badge = `イベントまで${d}日`;
-    else if (d === 0) badge = "本日開催";
-    else badge = "終了しました";
-
     return `
       <article class="event-card">
         <div class="event-visual">
-          <span class="event-countdown">${badge}</span>
           <span class="ph-label">EVENT</span>
         </div>
         <div class="event-body">
           <h3 class="event-name">${ev.name}</h3>
           <p class="event-date">${ev.dateLabel}</p>
           <div class="event-actions">
-            <a href="event.html" class="btn btn-outline">もっと見る</a>
-            <button type="button" class="btn btn-solid ticket-buy" data-index="${i}">チケットを購入</button>
+            <button type="button" class="btn btn-solid ticket-buy" data-index="${i}">チケット購入</button>
           </div>
         </div>
       </article>`;
@@ -72,7 +64,7 @@ function renderGoods() {
         <div class="goods-body">
           <h3 class="goods-name">${g.name}</h3>
           <p class="goods-price-label">価格</p>
-          <p class="goods-price">${yen(g.price)} <span class="goods-tax">消費税抜き</span></p>
+          <p class="goods-price">${yen(g.price)} <span class="goods-tax">税込</span></p>
           <button type="button" class="goods-add" data-index="${i}">カートに追加</button>
         </div>
       </article>`
@@ -83,6 +75,17 @@ function renderGoods() {
 
   const moreBtn = document.getElementById("goodsMore");
   if (moreBtn) moreBtn.addEventListener("click", showMoreGoods);
+
+  // PCカルーセルの矢印（横スクロール）
+  const prev = document.getElementById("goodsPrev");
+  const next = document.getElementById("goodsNext");
+  const scrollByCards = (dir) => {
+    const card = grid.querySelector(".goods-card");
+    const step = card ? (card.getBoundingClientRect().width + 20) * 2 : 400;
+    grid.scrollBy({ left: dir * step, behavior: "smooth" });
+  };
+  if (prev) prev.addEventListener("click", () => scrollByCards(-1));
+  if (next) next.addEventListener("click", () => scrollByCards(1));
 }
 
 // 商品カードの操作（カート追加・詳細モーダル）を紐づけ
@@ -113,16 +116,24 @@ function showMoreGoods() {
   if (moreBtn && goodsShown >= cards.length) moreBtn.hidden = true;
 }
 
-// ---------- 過去出店インフルエンサー（マーキー） ----------
+// ---------- 過去出店インフルエンサー（横スクロールのアバター） ----------
 function renderInfluencers() {
   const track = document.getElementById("influencerTrack");
   if (!track) return;
   // シームレスに流すため2周分並べる
   const items = [...PAST_INFLUENCERS, ...PAST_INFLUENCERS];
-  track.innerHTML = items.map((n) => `<span>${n}</span>`).join("");
+  track.innerHTML = items
+    .map(
+      (n) => `
+      <div class="influencer-avatar" title="${n}">
+        <div class="influencer-photo" aria-hidden="true">${String(n).replace(/[^0-9]/g, "") || n.charAt(0)}</div>
+        <span class="influencer-name">${n}</span>
+      </div>`
+    )
+    .join("");
 }
 
-// ---------- スポンサー ----------
+// ---------- スポンサー（ロゴグリッド） ----------
 function renderSponsors() {
   const grid = document.getElementById("sponsorGrid");
   if (!grid) return;
