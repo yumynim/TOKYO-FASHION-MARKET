@@ -310,9 +310,11 @@ button { font-family: inherit; cursor: pointer; }
 .event-date { font-size: 13px; color: var(--gray-4); }
 .event-actions { margin-top: auto; display: flex; gap: 10px; padding-top: 14px; }
 .event-actions .btn { flex: 1; text-align: center; padding: 10px 8px; font-size: 13px; }
+/* チケットセクションが黒背景のため、黒ボタンが背景に沈まないよう白ボタンに */
+.section-tickets .btn-solid { background: var(--white); color: var(--black); border-color: var(--white); }
+.section-tickets .btn-solid:hover { background: var(--gray-2); }
 
 /* ---------- Goods ---------- */
-.section-goods .section-title { color: var(--white); }
 .goods-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -431,6 +433,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 .news-item a { font-size: 14.5px; font-weight: 500; flex: 1; min-width: 240px; }
 .news-item a:hover { text-decoration: underline; }
+/* 黒背景セクションに置いた場合の枠線調整 */
+.section-invert .news-list,
+.section-invert .news-item { border-color: var(--gray-5); }
+.section-invert .news-tag { border-color: var(--white); }
 
 /* ---------- About gallery ---------- */
 .about-gallery {
