@@ -17,27 +17,32 @@
 
 // ---------- ① 開催予定イベント ----------
 // date: "2026-07-19" の形式で書くと「イベントまで◯日」を自動計算
-// 記入例: { name: "8日 ◯◯ホール（OSAKA）", date: "2026-08-08", dateLabel: "8月8日(土)" },
+// price: チケット価格（税込・数字のみ）。★ここを変更したら api/_catalog.js の EVENTS も同じ内容に必ず更新してください
+// 記入例: { name: "8日 ◯◯ホール（OSAKA）", date: "2026-08-08", dateLabel: "8月8日(土)", price: 1000 },
 const EVENTS = [
   {
     name: "19日 ◯◯ホール（TOKYO）",
     date: "2026-07-19",
     dateLabel: "7月19日(日)",
+    price: 1000,
   },
   {
     name: "20日 ◯◯ホール（TOKYO）",
     date: "2026-07-20",
     dateLabel: "7月20日(月)",
+    price: 1000,
   },
   {
     name: "26日 1部 ◯◯（TOKYO）",
     date: "2026-07-26",
     dateLabel: "7月26日(日)",
+    price: 1000,
   },
   {
     name: "26日 2部 ◯◯（TOKYO）",
     date: "2026-07-26",
     dateLabel: "7月26日(日)",
+    price: 1000,
   },
 ];
 

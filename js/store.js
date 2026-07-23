@@ -1,10 +1,12 @@
 // ==========================================================
 // ストア機能 — カート / 商品モーダル / チケットモーダル
-// 決済は行わない。カート内容は localStorage に保存。
+// 決済はSquareの決済ページ（Payment Link）へ遷移して行う。
+// カート内容は localStorage に保存。決済にはログインが必須。
 // ==========================================================
 
 const Store = {
-  KEY: "refa_demo_cart",
+  KEY: "tfm_cart",
+  PENDING_KEY: "tfm_pending_checkout", // Googleログインの画面遷移をまたいで決済を再開するためのフラグ
 
   // ---------- カートデータ ----------
   read() {
@@ -69,22 +71,89 @@ const Store = {
         <div class="cart-subtotal"><span>小計</span><span id="cartSubtotal">￥0</span></div>
         <p class="cart-tax-note">価格はすべて税込です。別途送料がかかる場合があります。</p>
         <button type="button" class="btn btn-solid" id="cartCheckout">ご購入手続きへ</button>
-        <p class="cart-checkout-done" id="cartDone" hidden>オンライン決済は現在準備中です。</p>
+        <p class="cart-checkout-done" id="cartDone" hidden></p>
       </div>`;
     document.body.appendChild(drawer);
 
     document.getElementById("cartClose").addEventListener("click", () => this.closeDrawer());
-    document.getElementById("cartCheckout").addEventListener("click", () => {
-      const done = document.getElementById("cartDone");
-      done.hidden = false;
-      setTimeout(() => (done.hidden = true), 4000);
-    });
+    document.getElementById("cartCheckout").addEventListener("click", () => this.checkout());
 
     const cartBtn = document.getElementById("cartBtn");
     if (cartBtn) cartBtn.addEventListener("click", () => this.openDrawer());
 
     this.renderDrawer();
     this.updateBadge();
+
+    // Googleログインの画面遷移から戻ってきた直後は、続きから決済を再開する
+    if (localStorage.getItem(this.PENDING_KEY) === "1") {
+      Auth.getSession().then((session) => {
+        if (session && this.read().length) {
+          this.openDrawer();
+          this.checkout();
+        } else {
+          localStorage.removeItem(this.PENDING_KEY);
+        }
+      });
+    }
+  },
+
+  // ---------- ご購入手続き（ログイン確認 → Square決済ページへ） ----------
+  async checkout() {
+    const items = this.read();
+    if (!items.length) return;
+
+    const session = await Auth.getSession();
+    if (!session) {
+      // 未ログイン: ログイン/新規登録してから、成功時に自動でチェックアウトへ戻る
+      localStorage.setItem(this.PENDING_KEY, "1");
+      UI.openLogin({ onSuccess: () => this.checkout() });
+      return;
+    }
+
+    await this._payWithSquare(
+      session,
+      { type: "cart", items: items.map((i) => ({ id: i.id, qty: i.qty })) },
+      { btn: document.getElementById("cartCheckout"), doneEl: document.getElementById("cartDone") }
+    );
+  },
+
+  // ---------- Square決済リンクを作成してリダイレクト ----------
+  // ui: { btn: 押されたボタン要素, doneEl: エラー/完了メッセージを出す要素 }
+  async _payWithSquare(session, payload, ui = {}) {
+    const { btn, doneEl: done } = ui;
+    const original = btn ? btn.textContent : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "処理中…";
+    }
+
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "決済ページの作成に失敗しました。");
+
+      localStorage.removeItem(this.PENDING_KEY);
+      window.location.href = data.url; // Squareの決済ページへ
+    } catch (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+      const message = err.message || "決済ページの作成に失敗しました。時間をおいて再度お試しください。";
+      if (done) {
+        done.textContent = message;
+        done.hidden = false;
+      } else {
+        alert(message);
+      }
+    }
   },
   openDrawer() {
     this.renderDrawer();
@@ -153,7 +222,7 @@ const Store = {
         <button type="button" class="qty-btn" data-q="inc" aria-label="数量を増やす">＋</button>
       </div>
       <button type="button" class="btn btn-solid" id="pAdd">カートに追加</button>
-      <p class="modal-note">※ オンライン購入は現在準備中です。</p>`);
+      <p class="modal-note">※ ご購入手続きにはログインが必要です。</p>`);
 
     const qtyEl = modal.querySelector("#pQty");
     modal.querySelectorAll(".qty-btn").forEach((b) =>
@@ -173,22 +242,23 @@ const Store = {
   openTicket(index) {
     if (typeof EVENTS === "undefined" || !EVENTS[index]) return;
     const ev = EVENTS[index];
-    const PRICE = 1000; // 一般入場（ダミー価格）
+    const price = ev.price || 1000; // ★ 価格は js/data.js の EVENTS で編集（api/_catalog.js にも同じ値を反映すること）
     let qty = 1;
 
     const modal = UI.openModal(`
       <h2 class="modal-title">チケット購入</h2>
       <p class="modal-meta">${ev.name}<br>${ev.dateLabel}</p>
-      <p class="modal-price">一般入場　￥${PRICE.toLocaleString("ja-JP")} <span class="goods-tax">（ダミー価格）</span></p>
+      <p class="modal-price">一般入場　￥${price.toLocaleString("ja-JP")} <span class="goods-tax">税込</span></p>
       <div class="qty-row">
         <span class="qty-label">枚数</span>
         <button type="button" class="qty-btn" data-q="dec" aria-label="枚数を減らす">−</button>
         <span class="qty-value" id="tQty">1</span>
         <button type="button" class="qty-btn" data-q="inc" aria-label="枚数を増やす">＋</button>
       </div>
-      <p class="modal-meta">合計: <strong id="tTotal">￥${PRICE.toLocaleString("ja-JP")}</strong>（税込）</p>
+      <p class="modal-meta">合計: <strong id="tTotal">￥${price.toLocaleString("ja-JP")}</strong>（税込）</p>
       <button type="button" class="btn btn-solid" id="tBuy">購入する</button>
-      <p class="modal-note">※ 支払方法: クレジットカード / コンビニ払い / QRコード決済<br>※ オンライン購入は現在準備中です。</p>`);
+      <p class="modal-note" id="ticketError" hidden></p>
+      <p class="modal-note">※ 支払方法: クレジットカード / コンビニ払い / QRコード決済</p>`);
 
     const qtyEl = modal.querySelector("#tQty");
     const totalEl = modal.querySelector("#tTotal");
@@ -196,15 +266,33 @@ const Store = {
       b.addEventListener("click", () => {
         qty = Math.max(1, Math.min(10, qty + (b.dataset.q === "inc" ? 1 : -1)));
         qtyEl.textContent = qty;
-        totalEl.textContent = "￥" + (PRICE * qty).toLocaleString("ja-JP");
+        totalEl.textContent = "￥" + (price * qty).toLocaleString("ja-JP");
       })
     );
-    modal.querySelector("#tBuy").addEventListener("click", () => {
-      modal.innerHTML = `
-        <button type="button" class="modal-close" aria-label="閉じる">✕</button>
-        <p class="modal-done">チケットのオンライン販売は現在準備中です。<br>最新情報はInstagramをご確認ください。</p>`;
-      modal.querySelector(".modal-close").addEventListener("click", () => UI.closeModal());
+
+    modal.querySelector("#tBuy").addEventListener("click", async () => {
+      const session = await Auth.getSession();
+      if (!session) {
+        // 未ログイン: チケットはページ遷移をまたげないため、ログイン後はカートを開いて案内する
+        UI.openLogin({
+          onSuccess: () => {
+            UI.closeModal();
+            this._payTicketAfterLogin(index, qty);
+          },
+        });
+        return;
+      }
+      this._payWithSquare(
+        session,
+        { type: "ticket", eventIndex: index, qty },
+        { btn: modal.querySelector("#tBuy"), doneEl: modal.querySelector("#ticketError") }
+      );
     });
+  },
+
+  async _payTicketAfterLogin(index, qty) {
+    const session = await Auth.getSession();
+    if (session) this._payWithSquare(session, { type: "ticket", eventIndex: index, qty });
   },
 };
 

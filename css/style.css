@@ -1042,6 +1042,31 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ---------- ログインモーダル ---------- */
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.google-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.modal-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--gray-4);
+  font-size: 12px;
+  margin: 0 0 20px;
+}
+.modal-divider::before,
+.modal-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--gray-2);
+}
+.modal-divider span { padding: 0 12px; }
 .login-tabs { display: flex; margin-bottom: 24px; }
 .login-tab {
   flex: 1;
@@ -1052,6 +1077,8 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 700;
 }
 .login-tab.is-active { background: var(--black); color: var(--white); }
+.is-error-note { color: #b3261e !important; }
+.btn-login.is-logged-in { font-weight: 700; }
 
 /* ---------- カートドロワー ---------- */
 .cart-drawer {
@@ -1270,7 +1297,7 @@ button { font-family: inherit; cursor: pointer; }
   .section { padding: 64px 0; }
   .hero { min-height: 64vh; }
   .brand-text { font-size: 13px; }
-  .btn-login { display: none; }
+  .btn-login { padding: 6px 12px; font-size: 11px; }
   .goods-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .news-item { gap: 10px; }
   .footer-nav { margin-left: 0; }

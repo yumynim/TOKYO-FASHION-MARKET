@@ -3,6 +3,11 @@ Thumbs.db
 node_modules/
 .vercel
 
+# 秘密情報（Vercelの環境変数にのみ設定。ここには絶対に置かない）
+.env
+.env.local
+.env*.local
+
 # 元素材（作業用・任意）
 資料/.DS_Store
 **/.DS_Store
