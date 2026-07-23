@@ -1155,6 +1155,19 @@ button { font-family: inherit; cursor: pointer; }
 .cart-foot .btn { width: 100%; text-align: center; }
 .cart-checkout-done { text-align: center; font-size: 13px; font-weight: 700; margin-top: 12px; }
 
+/* ---------- 購入完了ページの注文内容 ---------- */
+.order-summary {
+  list-style: none;
+  max-width: 360px;
+  margin: 24px auto 0;
+  padding: 16px 20px;
+  border: var(--border);
+  text-align: left;
+  font-size: 13.5px;
+}
+.order-summary li { padding: 4px 0; }
+.order-total { text-align: center; font-size: 15px; font-weight: 900; margin-top: 16px; }
+
 /* ---------- 商品カードのカートボタン ---------- */
 .goods-add {
   width: 100%;

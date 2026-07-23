@@ -7,6 +7,10 @@
 //   3. Squareの決済リンク（Payment Link）を作成
 //   4. { url } を返す → フロントはそのURLへ window.location.href で遷移
 //
+// 加えて、注文確認メール・購入完了ページでの状態表示のために、
+// 決済リンク作成時点で Supabase の orders テーブルに status='pending' の行を作成する
+// （supabase/schema.sql を参照）。実際にメールを送るのは api/webhooks/square.js。
+//
 // 必要な環境変数（Vercel Project Settings → Environment Variables）:
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY   ← 絶対に公開しない
@@ -77,6 +81,7 @@ module.exports = async (req, res) => {
   }
 
   const lineItems = [];
+  const orderLineItems = []; // orders テーブル保存・確認メール表示用（数量は数値、金額は行合計）
 
   if (body.type === "ticket") {
     const ev = EVENTS[body.eventIndex];
@@ -90,6 +95,7 @@ module.exports = async (req, res) => {
       quantity: String(qty),
       base_price_money: { amount: ev.price, currency: "JPY" },
     });
+    orderLineItems.push({ name: ev.name + "（チケット）", quantity: qty, amount: ev.price * qty });
   } else {
     const items = Array.isArray(body.items) ? body.items : [];
     for (const it of items) {
@@ -103,6 +109,7 @@ module.exports = async (req, res) => {
         quantity: String(qty),
         base_price_money: { amount: product.price, currency: "JPY" },
       });
+      orderLineItems.push({ name: product.name, quantity: qty, amount: product.price * qty });
     }
     if (!lineItems.length) {
       res.status(400).json({ error: "カートが空か、購入できる商品がありません。" });
@@ -116,7 +123,28 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // ---------- 3. Squareの決済リンクを作成 ----------
+  const amountTotal = orderLineItems.reduce((n, i) => n + i.amount, 0);
+
+  // ---------- 3. 注文レコードを先に作成（Webhook到達時の突合・メール送信に使う） ----------
+  const { data: orderRow, error: orderInsertError } = await supabaseAdmin
+    .from("orders")
+    .insert({
+      user_id: user.id,
+      buyer_email: user.email || null,
+      line_items: orderLineItems,
+      amount_total: amountTotal,
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  if (orderInsertError || !orderRow) {
+    console.error("checkout: orders テーブルへの作成に失敗しました", orderInsertError);
+    res.status(500).json({ error: "注文の作成に失敗しました。時間をおいて再度お試しください。" });
+    return;
+  }
+
+  // ---------- 4. Squareの決済リンクを作成 ----------
   try {
     const squareRes = await fetch(`${squareBaseUrl()}/v2/online-checkout/payment-links`, {
       method: "POST",
@@ -135,7 +163,8 @@ module.exports = async (req, res) => {
           line_items: lineItems,
         },
         checkout_options: {
-          redirect_url: `${process.env.SITE_URL || ""}/checkout-complete.html`,
+          // ?order=<orders.id> で購入完了ページが該当注文のステータスを問い合わせる
+          redirect_url: `${process.env.SITE_URL || ""}/checkout-complete.html?order=${orderRow.id}`,
         },
         pre_populated_data: user.email ? { buyer_email: user.email } : undefined,
       }),
@@ -145,20 +174,35 @@ module.exports = async (req, res) => {
 
     if (!squareRes.ok) {
       console.error("Square API error:", JSON.stringify(squareData));
+      await supabaseAdmin.from("orders").update({ status: "failed" }).eq("id", orderRow.id);
       res.status(502).json({ error: "決済ページの作成に失敗しました。時間をおいて再度お試しください。" });
       return;
     }
 
     const url = squareData.payment_link && squareData.payment_link.url;
-    if (!url) {
-      console.error("Square API: payment_link.url がレスポンスにありません", JSON.stringify(squareData));
+    const squareOrderId = squareData.payment_link && squareData.payment_link.order_id;
+    if (!url || !squareOrderId) {
+      console.error("Square API: payment_link.url / order_id がレスポンスにありません", JSON.stringify(squareData));
+      await supabaseAdmin.from("orders").update({ status: "failed" }).eq("id", orderRow.id);
       res.status(502).json({ error: "決済ページの作成に失敗しました。時間をおいて再度お試しください。" });
       return;
+    }
+
+    // Webhook到達時に square_order_id で突合できるように保存
+    const { error: linkError } = await supabaseAdmin
+      .from("orders")
+      .update({ square_order_id: squareOrderId })
+      .eq("id", orderRow.id);
+    if (linkError) {
+      // ここが失敗すると webhook 側で突合できず注文が「支払い済み未検知」のままになりうる。
+      // 決済自体は継続させ、ログに残して手動対応できるようにする。
+      console.error("checkout: square_order_id の保存に失敗しました", linkError, "orderId:", orderRow.id, "squareOrderId:", squareOrderId);
     }
 
     res.status(200).json({ url });
   } catch (err) {
     console.error("checkout: 予期しないエラー", err);
+    await supabaseAdmin.from("orders").update({ status: "failed" }).eq("id", orderRow.id);
     res.status(500).json({ error: "決済ページの作成に失敗しました。時間をおいて再度お試しください。" });
   }
 };

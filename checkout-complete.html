@@ -3,12 +3,12 @@
   ═══════════════════════════════════════════════════
   ページ: 購入完了（checkout-complete.html）
   Squareの決済ページから戻ってきた人が最初に見るページです。
-  api/checkout.js の redirect_url に指定しています。
+  api/checkout.js の redirect_url（?order=<orders.id>）から遷移してきます。
 
-  ▼ 注意
-  このページの表示だけでは「本当に支払いが完了したか」は保証されません
-  （URLを直接開いても表示されてしまうため）。正式な注文確定の判定は、
-  Square Webhook（payment.updated 等）をSupabaseに記録して行うことを推奨します。
+  ▼ 仕組み
+  URLの ?order= を js/checkout-complete.js が読み取り、/api/order-status を
+  ポーリングして Square Webhook（api/webhooks/square.js）による支払い確認結果を
+  実際に反映する。URLを直接開いた・注文IDが無い場合は確認できない旨を案内する。
   ═══════════════════════════════════════════════════
 -->
 <html lang="ja">
@@ -37,10 +37,9 @@
 
     <section class="section">
       <div class="container container-narrow text-center">
-        <p class="section-lead">
-          お手続きが完了しました。ご購入内容の確認メールをお送りしておりますので、
-          届いていない場合は迷惑メールフォルダもご確認ください。
-        </p>
+        <div id="orderResult">
+          <p class="section-lead">お支払いの確認をしています…</p>
+        </div>
         <div class="section-more">
           <a href="index.html" class="btn btn-solid">ホームへ戻る</a>
         </div>

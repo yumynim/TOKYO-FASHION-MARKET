@@ -7,6 +7,7 @@
 const Store = {
   KEY: "tfm_cart",
   PENDING_KEY: "tfm_pending_checkout", // Googleログインの画面遷移をまたいで決済を再開するためのフラグ
+  MAX_QTY: 30, // お一人様の購入上限。api/checkout.js の MAX_QTY_PER_LINE と必ず一致させる
 
   // ---------- カートデータ ----------
   read() {
@@ -32,7 +33,7 @@ const Store = {
     let items = this.read();
     const found = items.find((i) => i.id === id);
     if (!found) return;
-    found.qty = qty;
+    found.qty = Math.min(qty, this.MAX_QTY);
     if (found.qty <= 0) items = items.filter((i) => i.id !== id);
     this.write(items);
   },
