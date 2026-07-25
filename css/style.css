@@ -966,6 +966,77 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0 4px;
 }
 
+/* ---------- ヘッダーアイコン（通知） ---------- */
+.notif-wrap { position: relative; }
+.notif-count {
+  position: absolute;
+  top: -7px; right: -7px;
+  min-width: 18px; height: 18px;
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font-en);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 50%;
+  padding: 0 4px;
+}
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 8px); right: 0;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--white);
+  border: var(--border);
+  z-index: 150;
+  display: none;
+}
+.notif-wrap.is-open .notif-panel { display: block; }
+.notif-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: var(--border);
+  font-size: 13px;
+  font-weight: 700;
+}
+.notif-mark-all {
+  background: none;
+  border: none;
+  font-size: 11.5px;
+  color: var(--gray-4);
+  text-decoration: underline;
+}
+.notif-mark-all:hover { color: var(--black); }
+.notif-empty {
+  padding: 20px 14px;
+  font-size: 13px;
+  color: var(--gray-4);
+  text-align: center;
+}
+.notif-list { list-style: none; }
+.notif-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-2);
+  cursor: default;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item.is-unread { background: var(--gray-1); cursor: pointer; }
+.notif-item.is-unread .notif-item-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--black);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.notif-item-title { font-size: 13px; font-weight: 700; }
+.notif-item-body { font-size: 12.5px; color: var(--gray-4); margin-top: 4px; line-height: 1.5; }
+
 /* ---------- モーダル ---------- */
 .modal-overlay {
   position: fixed;

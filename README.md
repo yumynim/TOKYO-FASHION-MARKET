@@ -30,7 +30,8 @@
 | `js/data.js` | イベント・商品・ニュース・FAQ等のデータ（**まずここを編集**） |
 | `js/layout.js` | 共通ヘッダー/フッターの注入・ナビ |
 | `js/config.js` | Supabaseの接続先（公開してよい値のみ。**ここにservice_role keyは書かない**） |
-| `js/auth.js` | ログイン管理（Google／メールアドレス、Supabase Auth） |
+| `js/auth.js` | ログイン管理（Google／メールアドレス、Supabase Auth）＋ログインゲート（`gateContent()`） |
+| `js/notifications.js` | アプリ内通知（`notifications`テーブルの取得・既読化・ヘッダーの通知ベルUI） |
 | `js/ui.js` | モーダル・ログイン画面・アカウントメニュー |
 | `js/store.js` | カート・チェックアウト（ログイン確認 → Square決済へ） |
 | `js/checkout-complete.js` | 購入完了ページの注文確認ポーリング・表示 |
@@ -39,8 +40,8 @@
 | `api/_catalog.js` | サーバー側の価格マスタ（`js/data.js`と手動で同期させる） |
 | `api/_email.js` | 購入確認メール送信（Resend HTTP APIを直接fetch） |
 | `api/order-status.js` | 購入完了ページ用の注文ステータス確認API |
-| `api/webhooks/square.js` | Square Webhook受信（署名検証→注文確定→確認メール送信） |
-| `supabase/schema.sql` | `orders`テーブルのDDL（Supabase SQL Editorで実行） |
+| `api/webhooks/square.js` | Square Webhook受信（署名検証→注文確定→確認メール送信→アプリ内通知作成） |
+| `supabase/schema.sql` | `orders` / `notifications` テーブルのDDL（Supabase SQL Editorで実行） |
 
 ## ログイン → 決済 → 購入確認メールの仕組み
 
@@ -78,8 +79,9 @@
 4. Authentication → Emails → SMTP Settings で **Resendを送信元に設定**（デフォルトのSupabaseメールは本番利用に非推奨・レート制限あり）
 5. Project Settings → API から `Project URL` と `anon public key` を取得 → `js/config.js` に書く
 6. 同じ画面の `service_role key` は **Vercelの環境変数にのみ** 設定（コードに書かない）
-7. **SQL Editor で [`supabase/schema.sql`](./supabase/schema.sql) の内容を実行**（`orders` テーブルを作成。
-   購入確認メール・購入完了ページの表示に必須）
+7. **SQL Editor で [`supabase/schema.sql`](./supabase/schema.sql) の内容を実行**（`orders` / `notifications` の
+   2テーブルを作成。`orders`は購入確認メール・購入完了ページの表示に必須、`notifications`はヘッダーの
+   通知ベル表示に必須）
 
 ### 2. Resend
 1. [resend.com](https://resend.com) で Team「TFM」を作成

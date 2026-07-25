@@ -79,6 +79,9 @@ Square（決済リンク作成）/ Vercel（ホスティング + Serverless Func
   CDN読み込みに戻さない
 - **`orders` テーブルは RLS を有効化しポリシーを作らない**（anon/authenticatedから常に不可視）。
   クライアントからの直接アクセスを許可するポリシーを追加しない。参照は必ず `/api` 配下（service_role）経由
+- **`notifications` テーブルは「本人の行のみ select/update 可」のRLSポリシーのみ**を持つ。
+  `insert`/`delete` 用の authenticated 向けポリシーは追加しない（通知の作成は必ず `api/webhooks/square.js` 等の
+  service_role経由に限定し、クライアントが自分に通知をでっち上げたり他人の通知を操作できないようにする）
 
 ## セキュリティ上の注意事項
 

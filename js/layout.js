@@ -51,6 +51,16 @@ function renderHeader() {
     </nav>
     <div class="header-actions">
       <button type="button" class="btn btn-outline btn-login">ログイン</button>
+      <div class="notif-wrap" id="notifWrap" hidden>
+        <button type="button" class="icon-btn" id="notifBtn" aria-label="通知を開く" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c0.5-0.5 2-2 2-6Z"/>
+            <path d="M10 20a2 2 0 0 0 4 0"/>
+          </svg>
+          <span class="notif-count" id="notifCount" hidden>0</span>
+        </button>
+        <div class="notif-panel" id="notifPanel"></div>
+      </div>
       <button type="button" class="icon-btn" id="cartBtn" aria-label="カートを開く">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path d="M6 7h12l-1.2 11a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7Z"/>

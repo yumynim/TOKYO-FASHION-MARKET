@@ -174,4 +174,10 @@ const PAGE_INITS = {
   sponsorship() { setupDemoForm("sponsorForm", "sponsorDone"); },
   casting() { setupDemoForm("castingForm", "castingDone"); },
   sample() { setupDemoForm("sampleForm", "sampleDone"); },
+
+  // ---------- ログイン限定ページ（Members） ----------
+  members() {
+    const btn = document.getElementById("membersLoginBtn");
+    if (btn) btn.addEventListener("click", () => UI.openLogin());
+  },
 };

@@ -92,6 +92,20 @@ const Auth = {
     UI.openLogin({ onSuccess: (s) => onReady(s) });
   },
 
+  // ---------- ログイン必須ページ／セクションの表示切り替え ----------
+  // 使い方: 会員限定の中身を `[data-auth-gate]` で囲み、
+  // 未ログイン時の案内を `[data-auth-gate-locked]` で用意しておく（どちらもHTML側は hidden 属性つき）。
+  // ログイン状態が変わるたびに呼び直すことで表示を追従させる（onChangeから呼ばれる）。
+  async gateContent() {
+    const content = document.querySelector("[data-auth-gate]");
+    const locked = document.querySelector("[data-auth-gate-locked]");
+    if (!content && !locked) return;
+
+    const user = await this.getUser();
+    if (content) content.hidden = !user;
+    if (locked) locked.hidden = !!user;
+  },
+
   // ---------- Supabaseのエラーメッセージを日本語に ----------
   translateError(err) {
     const msg = (err && err.message) || "";
@@ -106,5 +120,9 @@ const Auth = {
 
 document.addEventListener("DOMContentLoaded", () => {
   Auth.refreshHeaderUI();
-  Auth.onChange(() => Auth.refreshHeaderUI());
+  Auth.gateContent();
+  Auth.onChange(() => {
+    Auth.refreshHeaderUI();
+    Auth.gateContent();
+  });
 });
