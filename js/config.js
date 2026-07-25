@@ -15,5 +15,5 @@
 //   Project URL      → SUPABASE_URL
 //   anon public key  → SUPABASE_ANON_KEY
 
-const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const SUPABASE_URL = "https://ubiwxziuynjywvqkbevx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable__T5KFupQfeOotH_KHNtV7w_vi0-pJs2";
