@@ -160,28 +160,50 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 - Supabase/Squareの実クレデンシャルが無いため、`notifications`テーブルへの実際のINSERT・
   RLSポリシーの本番動作は**未検証**（ロジック・フロント表示のみ確認済み）
 
+## 2026-07-26 セッション5（Supabase接続・本番反映の確認）
+- **Supabaseプロジェクトが作成され、以下が完了済みと確認**（ユーザー本人がSupabase/Vercelダッシュボードで実施）:
+  - Vercel環境変数に `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` を設定済み
+  - `supabase/schema.sql`（最新版＝`orders`＋`notifications`）をSupabase SQL Editorで実行し、Successを確認済み
+- **`js/config.js` に本番の `SUPABASE_URL` / `SUPABASE_ANON_KEY`（publishable key）を反映**し、コミット・push済み
+  （コミット `df1fde1`）
+- **本番サイトで動作確認**: `https://tokyo-fashion-market.vercel.app/js/config.js` が最新の実値を返している、
+  ページ上で `Auth.client` が正しく生成されている（＝Supabase接続が有効）ことをブラウザで確認。
+  コンソールエラーなし。最新デプロイがReadyであることを確認
+- **新規登録・Supabase Auth Usersへの反映・再ログインの実地テストは未実施**。
+  アカウント作成・パスワード入力を伴う操作のため、Claudeでは代行せずユーザー本人に依頼中
+- **方針**: Square・Resend・決済関連の設定は後回しとし、Supabase認証機能（新規登録・ログイン）の
+  動作確認を優先する
+
 # 現在作業中の内容
 
-なし。上記の実装は一区切り済みだが、**すべて未コミット**。
-また `supabase/schema.sql`（`orders` / `notifications` とも）は本番Supabaseに未適用（Supabase自体が未接続のため）。
+Supabase認証（新規登録・ログイン）の実地確認待ち。ユーザー本人が本番サイトで新規登録→
+Supabase Authentication→Usersへの反映→再ログインの3点をテストする予定。結果待ちで
+問題があれば原因調査・修正を行う。
 
 # 未完了の作業
 
+## Supabase認証の実地確認（最優先・進行中）
+- [ ] 本番サイトで新規登録テスト（メール/パスワード）
+- [ ] Supabase Authentication → Users にユーザーが追加されるか確認
+- [ ] ログアウト後、同じアカウントで再ログインできるか確認
+
 ## 本番化前に必要な設定（README「今後の設定手順」参照）
-- [ ] Supabase プロジェクト作成・Google OAuth 有効化・Redirect URLs 登録
-- [ ] **`supabase/schema.sql` を Supabase SQL Editor で実行**（`orders` / `notifications` 2テーブル。
-      `orders`が無いと`api/checkout.js`が注文作成に失敗し決済が完全に止まる。`notifications`が無いと
-      Webhookでの通知作成が失敗するが、決済自体は継続する設計＝ログにだけエラーが出る）
-- [ ] Supabase Auth の SMTP 送信元を Resend に設定
-- [ ] `js/config.js` に本番の `SUPABASE_URL` / `SUPABASE_ANON_KEY` を設定（現状プレースホルダー `YOUR-PROJECT-REF`）
-- [ ] Vercel 環境変数に `SUPABASE_SERVICE_ROLE_KEY` / `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` /
-      `SQUARE_ENVIRONMENT` / `SQUARE_WEBHOOK_SIGNATURE_KEY` / `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `SITE_URL` を設定
-- [ ] Square Developer Dashboard で Webhook（Notification URL: `{SITE_URL}/api/webhooks/square`、
-      イベント: `payment.updated`）を登録し、Signature Keyを取得
-- [ ] Resendで送信ドメインのSPF/DKIM認証を完了させ、`RESEND_FROM_EMAIL` を認証済みアドレスにする
-- [ ] Square を sandbox で**実際にテスト決済**し、購入完了ページに内容が表示され確認メールが届くことを確認
-      （このセッションではSupabase/Squareの実クレデンシャルが無く未実施）
-- [ ] Square を sandbox で動作確認後、production の Access Token / Location ID / Webhookに切り替え
+- [x] Supabase プロジェクト作成 → **完了**（Google OAuth有効化・Redirect URLs登録は未確認、必要なら別途）
+- [x] ~~`supabase/schema.sql` を Supabase SQL Editor で実行~~ → **完了**（`orders` / `notifications`
+      2テーブルともSuccessを確認済み）
+- [x] ~~`js/config.js` に本番の `SUPABASE_URL` / `SUPABASE_ANON_KEY` を設定~~ → **完了**（コミット`df1fde1`）
+- [x] ~~Vercel 環境変数に `SUPABASE_SERVICE_ROLE_KEY` を設定~~ → **完了**
+      （`SUPABASE_URL` / `SUPABASE_ANON_KEY` もVercel側に設定済み。ただし`/api`配下のコードが実際に参照するのは
+      `SUPABASE_URL`と`SUPABASE_SERVICE_ROLE_KEY`の組み合わせのみで`SUPABASE_ANON_KEY`は未使用。
+      フロント（ブラウザ）側は`js/config.js`に直書きした値を見るため、Vercelの`SUPABASE_ANON_KEY`はどこからも
+      参照されていない＝設定しても害はないが、フロントの動作には`js/config.js`の値が効いている点に注意）
+- [ ] Supabase Auth の SMTP 送信元を Resend に設定（**後回し**。デフォルトのSupabase送信でまず認証動作を確認する）
+- [ ] Vercel 環境変数に `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` /
+      `SQUARE_ENVIRONMENT` / `SQUARE_WEBHOOK_SIGNATURE_KEY` / `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `SITE_URL` を設定（**後回し**）
+- [ ] Square Developer Dashboard で Webhook を登録（**後回し**）
+- [ ] Resendで送信ドメインのSPF/DKIM認証を完了（**後回し**。独自ドメイン取得後）
+- [ ] Square を sandbox で実際にテスト決済（**後回し**）
+- [ ] Square を production に切り替え（**後回し**）
 
 ## 機能面
 - [x] ~~Square Webhook 未実装~~ → **今回実装済み**（`api/webhooks/square.js`）。支払い確定後に
@@ -309,6 +331,14 @@ python3 -m http.server 4173
 - 自動テスト（tsc/jest等）は存在しない。変更後は必ずブラウザで目視確認する
 
 # 最終更新
+
+**2026-07-26（セッション5）**
+Supabaseプロジェクト作成・Vercel環境変数（`SUPABASE_URL`/`SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY`）設定・
+`supabase/schema.sql`（`orders`+`notifications`）の本番実行がユーザー本人により完了。
+`js/config.js`に本番の接続情報を反映してコミット・push済み（`df1fde1`）。本番サイトで最新デプロイが
+Readyであること・`Auth.client`が正しく生成されることをブラウザで確認。
+新規登録・Supabase Authへの反映・再ログインの実地テストは、アカウント作成/パスワード入力を伴うため
+Claudeでは代行せず、ユーザー本人が実施予定（結果待ち）。Square・Resend・決済関連は方針として後回し。
 
 **2026-07-26（セッション4）**
 `supabase/schema.sql`がコード構成に対して過不足ないか精査した上で、「アプリ内通知」と
