@@ -87,8 +87,14 @@
 1. [resend.com](https://resend.com) で Team「TFM」を作成
 2. 送信ドメイン（本ドメイン確定後、`mail.`等のサブドメイン推奨）を追加し、SPF/DKIM/DMARCのDNSレコードを設定
 3. SupabaseのAuthメール送信用に、SMTP認証情報をSupabase側に設定（上記1-4）
-4. **購入確認メール用**に送信専用スコープのAPIキーを発行し、Vercelの環境変数 `RESEND_API_KEY` に設定。
-   送信元アドレスは認証済みドメインのものを `RESEND_FROM_EMAIL` に設定
+4. **購入確認メール用**に送信専用スコープのAPIキーを発行し、Vercelの環境変数 `RESEND_API_KEY` に設定
+
+**独自ドメイン接続前の現在の状態**: `RESEND_API_KEY` は設定済みだが `RESEND_SEND_ENABLED` を
+`true` にしていないため、実際のメール送信はまだ無効（`api/_email.js` が常にスキップする）。
+ドメイン接続後、以下の3ステップだけで本番送信を有効化できる（コード変更は不要）。
+1. 上記2でドメインのDNS認証（SPF/DKIM/DMARC）を完了させる
+2. Vercelの環境変数 `RESEND_FROM_EMAIL` を認証済みドメインの送信元アドレスに変更
+3. Vercelの環境変数 `RESEND_SEND_ENABLED` を `true` に変更 → Redeploy
 
 ### 3. Square
 1. Square Developer Dashboard でアプリを作成し、**Sandbox**の Access Token でまず動作確認
@@ -115,7 +121,8 @@
 | `SQUARE_ENVIRONMENT` | `sandbox` または `production` |
 | `SQUARE_WEBHOOK_SIGNATURE_KEY` | **非公開・Vercelのみ** |
 | `RESEND_API_KEY` | **非公開・Vercelのみ** |
-| `RESEND_FROM_EMAIL` | 公開可（送信元アドレス） |
+| `RESEND_FROM_EMAIL` | 公開可（送信元アドレス。★ドメイン接続後はこれだけ変更すればよい） |
+| `RESEND_SEND_ENABLED` | 公開可。`true`の時だけ実際に送信する本番スイッチ（ドメイン接続完了までは未設定/`false`のままにする） |
 | `SITE_URL` | 公開可（決済完了後の戻り先URL・Webhook署名検証に使用） |
 
 3. Deploy。`/api` 配下のファイルは自動でサーバーレス関数として認識されます（追加設定不要）

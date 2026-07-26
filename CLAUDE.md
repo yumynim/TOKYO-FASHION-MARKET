@@ -82,6 +82,9 @@ Square（決済リンク作成）/ Vercel（ホスティング + Serverless Func
 - **`notifications` テーブルは「本人の行のみ select/update 可」のRLSポリシーのみ**を持つ。
   `insert`/`delete` 用の authenticated 向けポリシーは追加しない（通知の作成は必ず `api/webhooks/square.js` 等の
   service_role経由に限定し、クライアントが自分に通知をでっち上げたり他人の通知を操作できないようにする）
+- **`api/_email.js` の実送信は `RESEND_SEND_ENABLED=true` の時だけ**。独自ドメインをResendに接続し、
+  `RESEND_FROM_EMAIL` を認証済みアドレスに変更するまでは `true` にしない
+  （未接続ドメインのアドレスから送るとResend側で失敗する、または意図せず仮の送信元から本番顧客にメールが飛ぶ事故を防ぐため）
 
 ## セキュリティ上の注意事項
 

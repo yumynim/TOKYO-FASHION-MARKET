@@ -2,20 +2,35 @@
 // 注文確認メール送信（Resend HTTP APIを直接fetch。SDK不使用）
 //
 // 必要な環境変数:
-//   RESEND_API_KEY     … Resendダッシュボードで発行
-//   RESEND_FROM_EMAIL  … 認証済みドメインの送信元アドレス（例: noreply@example.com）
+//   RESEND_API_KEY      … Resendダッシュボードで発行
+//   RESEND_FROM_EMAIL   … 送信元アドレス。★独自ドメインをResendに接続したら、この値だけ
+//                         認証済みドメインのアドレス（例: noreply@example.com）に変更すればよい
+//                         （コード側の変更は不要）
+//   RESEND_SEND_ENABLED … "true" の時だけ実際に送信する本番スイッチ。それ以外（未設定含む）は
+//                         常に送信をスキップする。独自ドメインをResendに接続し、
+//                         RESEND_FROM_EMAILを認証済みアドレスに変更した後、
+//                         最後に "true" にして本番送信を有効化する
 //
-// 未設定の間は静かに送信をスキップする（決済自体は失敗させない。
-// ログにだけ警告を出す＝webhook全体を500で落とすとSquareが再送を繰り返すため）。
+// 上記のいずれかが未設定/無効の間は静かに送信をスキップする（決済自体は失敗させない。
+// ログにだけ理由を出す＝webhook全体を500で落とすとSquareが再送を繰り返すため）。
 // ==========================================================
+
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
+const SEND_ENABLED = process.env.RESEND_SEND_ENABLED === "true";
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 async function sendOrderConfirmationEmail({ to, lineItems, amountTotal }) {
-  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
+  if (!process.env.RESEND_API_KEY || !FROM_EMAIL) {
     console.error("email: RESEND_API_KEY / RESEND_FROM_EMAIL が未設定のため送信をスキップしました");
+    return { skipped: true };
+  }
+  if (!SEND_ENABLED) {
+    // ドメイン未接続の間の安全策。RESEND_API_KEY/RESEND_FROM_EMAILが設定済みでも、
+    // RESEND_SEND_ENABLED=true にするまでは実際には送信しない。
+    console.log("email: RESEND_SEND_ENABLED が true ではないため送信をスキップしました（本番送信は未有効化）。宛先:", to);
     return { skipped: true };
   }
   if (!to) {
@@ -55,7 +70,7 @@ async function sendOrderConfirmationEmail({ to, lineItems, amountTotal }) {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL,
+      from: FROM_EMAIL,
       to,
       subject: "【TOKYO FASHION MARKET】ご購入ありがとうございました",
       html,

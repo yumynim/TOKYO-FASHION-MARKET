@@ -75,7 +75,7 @@ TOKYO-FASHION-MARKET/
 | 決済 | Square（Payment Links API、`SQUARE_VERSION = "2024-01-18"` に固定） |
 | ホスティング | Vercel（静的配信 + `/api` 配下の Serverless Functions） |
 | 依存パッケージ | `@supabase/supabase-js`（`package.json` に1件のみ） |
-| メール | Resend HTTP APIを直接fetch（`api/_email.js`）。購入確認メール＋（設定すれば）Supabase Auth のSMTP送信元 |
+| メール | Resend HTTP APIを直接fetch（`api/_email.js`）。購入確認メール＋（設定すれば）Supabase Auth のSMTP送信元。`RESEND_SEND_ENABLED=true`の時だけ実送信する本番スイッチあり（現状false＝ドメイン未接続のため無効） |
 | Webhook | **実装済み**（`api/webhooks/square.js`）。Squareの `payment.updated` を署名検証した上で受信し、注文確定・確認メール送信・アプリ内通知作成を行う |
 | 注文の記録 | Supabase `orders` テーブル（`supabase/schema.sql`）。RLS有効・ポリシーなしで anon からは不可視。参照は `/api` 配下（service_role）経由のみ |
 | アプリ内通知 | Supabase `notifications` テーブル（`supabase/schema.sql`）。RLSで「本人の行のみ select/update可」。作成は`api/webhooks/square.js`（service_role）限定。フロントは`js/notifications.js`が`Auth.client`経由で直接読む |
@@ -174,6 +174,17 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 - **方針**: Square・Resend・決済関連の設定は後回しとし、Supabase認証機能（新規登録・ログイン）の
   動作確認を優先する
 
+## 2026-07-26 セッション6（Resendの事前準備：ドメイン未接続でも安全な構成に）
+- `RESEND_API_KEY` がVercelに設定済み・Redeploy済みという状況を踏まえ、ドメイン未接続の状態でも
+  誤って本番送信されないよう `api/_email.js` を修正
+- **`RESEND_FROM_EMAIL` を`FROM_EMAIL`という単一の定数に集約**（以前は`process.env.RESEND_FROM_EMAIL`を
+  2箇所で直接参照していた）。ドメイン接続後はVercelの環境変数`RESEND_FROM_EMAIL`の値を変更するだけでよく、
+  コード変更は不要
+- **本番送信の明示的なスイッチ`RESEND_SEND_ENABLED`を新設**。`"true"`の時だけ実際にResendへ送信し、
+  それ以外（未設定含む）は常にスキップする。`RESEND_API_KEY`が設定済みでも、このスイッチが無い限り
+  実送信されない設計にした（ドメイン未接続の間に誤送信・失敗送信が起きないようにする安全策）
+- `.env.example` / `README.md`（Resend設定手順・環境変数一覧） / `CLAUDE.md`（変更してはいけない仕様）を更新
+
 # 現在作業中の内容
 
 Supabase認証（新規登録・ログイン）の実地確認待ち。ユーザー本人が本番サイトで新規登録→
@@ -198,10 +209,14 @@ Supabase Authentication→Usersへの反映→再ログインの3点をテスト
       フロント（ブラウザ）側は`js/config.js`に直書きした値を見るため、Vercelの`SUPABASE_ANON_KEY`はどこからも
       参照されていない＝設定しても害はないが、フロントの動作には`js/config.js`の値が効いている点に注意）
 - [ ] Supabase Auth の SMTP 送信元を Resend に設定（**後回し**。デフォルトのSupabase送信でまず認証動作を確認する）
+- [x] ~~Vercel 環境変数に `RESEND_API_KEY` を設定~~ → **完了**（Redeploy済み。ただし`RESEND_SEND_ENABLED`が
+      無いため、この時点ではまだ実送信されない設計になっている）
 - [ ] Vercel 環境変数に `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` /
-      `SQUARE_ENVIRONMENT` / `SQUARE_WEBHOOK_SIGNATURE_KEY` / `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `SITE_URL` を設定（**後回し**）
+      `SQUARE_ENVIRONMENT` / `SQUARE_WEBHOOK_SIGNATURE_KEY` / `SITE_URL` を設定（**後回し**）
 - [ ] Square Developer Dashboard で Webhook を登録（**後回し**）
 - [ ] Resendで送信ドメインのSPF/DKIM認証を完了（**後回し**。独自ドメイン取得後）
+- [ ] ドメイン接続後: Vercelの `RESEND_FROM_EMAIL` を認証済みアドレスに変更 →
+      `RESEND_SEND_ENABLED` を `true` に変更 → Redeploy（この3手順のみでメール送信が本番有効化される）
 - [ ] Square を sandbox で実際にテスト決済（**後回し**）
 - [ ] Square を production に切り替え（**後回し**）
 
@@ -331,6 +346,13 @@ python3 -m http.server 4173
 - 自動テスト（tsc/jest等）は存在しない。変更後は必ずブラウザで目視確認する
 
 # 最終更新
+
+**2026-07-26（セッション6）**
+Resendの事前準備を実施。`RESEND_API_KEY`がVercelに設定済み・ドメイン未接続という状況で、
+`api/_email.js`に送信元アドレスの定数化（`FROM_EMAIL`）と、本番送信の明示的なスイッチ
+（`RESEND_SEND_ENABLED`、`true`の時だけ実送信）を追加。ドメイン接続後は
+「`RESEND_FROM_EMAIL`を変更→`RESEND_SEND_ENABLED`を`true`に→Redeploy」の3手順のみで
+本番有効化できる構成にした。`.env.example`/`README.md`/`CLAUDE.md`も合わせて更新。
 
 **2026-07-26（セッション5）**
 Supabaseプロジェクト作成・Vercel環境変数（`SUPABASE_URL`/`SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY`）設定・
