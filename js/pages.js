@@ -22,7 +22,7 @@ const PAGE_INITS = {
           <h3 class="goods-name">${g.name}</h3>
           <p class="goods-price-label">価格</p>
           <p class="goods-price">￥${g.price.toLocaleString("ja-JP")} <span class="goods-tax">税込</span></p>
-          <button type="button" class="goods-add" data-index="${i}">カートに追加</button>
+          ${g.quickAdd === false ? "" : `<button type="button" class="goods-add" data-index="${i}">カートに追加</button>`}
         </div>
       </article>`
     ).join("");
@@ -43,19 +43,10 @@ const PAGE_INITS = {
     });
   },
 
-  // ---------- 企業理念（hagi） ----------
+  // ---------- コンセプト（hagi） ----------
   hagi() {
-    // メンバー（ダミー名）
-    const MEMBERS = [
-      { role: "代表取締役", name: "山田 花子" },
-      { role: "役員", name: "佐藤 あかり" },
-      { role: "メンバー", name: "鈴木 亜美" },
-      { role: "メンバー", name: "田中 瀬里" },
-      { role: "メンバー", name: "高橋 結" },
-      { role: "メンバー", name: "伊藤 葵" },
-      { role: "メンバー", name: "渡辺 奈那" },
-      { role: "メンバー", name: "中村 葉奈" },
-    ];
+    // メンバー。★写真は後日追加予定（それまでは仮のイニシャル表示のまま）
+    const MEMBERS = [{ role: "代表", name: "植谷 航輝" }];
     const memberGrid = document.getElementById("memberGrid");
     if (memberGrid) {
       memberGrid.innerHTML = MEMBERS.map(
@@ -66,10 +57,6 @@ const PAGE_INITS = {
           <p class="m-name">${m.name}</p>
         </div>`
       ).join("");
-    }
-    const sponsorGrid = document.getElementById("sponsorGrid");
-    if (sponsorGrid) {
-      sponsorGrid.innerHTML = SPONSORS.map((s) => `<div class="sponsor-cell">${s}</div>`).join("");
     }
     setupDemoForm("pressForm", "pressDone");
   },
@@ -95,13 +82,25 @@ const PAGE_INITS = {
       const slice = items.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
       list.innerHTML = slice.length
-        ? slice.map((a) => `
+        ? slice.map((a, i) => `
           <li class="news-item">
             <time>${a.date}</time>
             <span class="news-tag">${a.cat}</span>
-            <a href="#">${a.title}</a>
+            <button type="button" class="news-title" data-index="${i}" aria-expanded="false">${a.title}</button>
+            <div class="news-detail" id="newsDetail${i}">
+              <div class="news-detail-inner">${a.body || "詳細は準備中です。"}</div>
+            </div>
           </li>`).join("")
         : '<li class="news-item"><span>該当する記事はありません。</span></li>';
+
+      list.querySelectorAll(".news-title").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const detail = document.getElementById("newsDetail" + btn.dataset.index);
+          const isOpen = btn.getAttribute("aria-expanded") === "true";
+          btn.setAttribute("aria-expanded", String(!isOpen));
+          detail.style.maxHeight = isOpen ? "0" : detail.scrollHeight + "px";
+        });
+      });
 
       pagination.innerHTML = Array.from({ length: pages }, (_, i) =>
         `<button type="button" ${i + 1 === currentPage ? 'class="is-active"' : ""} data-page="${i + 1}">${i + 1}</button>`

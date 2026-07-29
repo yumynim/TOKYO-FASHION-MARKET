@@ -111,22 +111,8 @@
     <section class="section section-news section-invert" id="news">
       <div class="container">
         <h2 class="section-title">"TFM" NEWS</h2>
-        <ul class="news-list">
-          <li class="news-item">
-            <time datetime="2026-02-24">2026.02.24</time>
-            <span class="news-tag">PRESS</span>
-            <a href="news.html">コスメブランドとのコラボ企画が自発投稿だけで大きく拡散されました</a>
-          </li>
-          <li class="news-item">
-            <time datetime="2025-10-29">2025.10.29</time>
-            <span class="news-tag">MEDIA</span>
-            <a href="news.html">【業界紙に掲載いただきました】</a>
-          </li>
-          <li class="news-item">
-            <time datetime="2025-10-29">2025.10.29</time>
-            <span class="news-tag">MEDIA</span>
-            <a href="news.html">【全国紙に弊社が掲載いただきました】</a>
-          </li>
+        <ul class="news-list" id="newsListHome">
+          <!-- JSで生成（js/data.js の NEWS_ARTICLES 上位3件） -->
         </ul>
         <div class="section-more">
           <a href="news.html" class="btn btn-outline">ニュース一覧 →</a>
@@ -166,7 +152,7 @@
     <section class="section section-company section-invert" id="company">
       <div class="container company-flex">
         <div class="company-text">
-          <h2 class="section-title">企業理念</h2>
+          <h2 class="section-title">コンセプト</h2>
           <!-- ★ 会社紹介文: 下の段落を書き換え -->
           <p>
             インフルエンサーとファンをつなぐフリーマーケットイベントを企画・運営しています。
@@ -219,6 +205,17 @@
           <div class="form-row">
             <label for="email">メールアドレス</label>
             <input type="email" id="email" name="email" required autocomplete="email">
+          </div>
+          <div class="form-row">
+            <label for="category">お問い合わせ種別</label>
+            <select id="category" name="category" required>
+              <option value="" disabled selected>選択してください</option>
+              <option value="仕事の相談・依頼">仕事の相談・依頼</option>
+              <option value="イベントについて">イベントについて</option>
+              <option value="取材・インタビュー">取材・インタビュー</option>
+              <option value="インターン希望">インターン希望</option>
+              <option value="その他">その他</option>
+            </select>
           </div>
           <div class="form-row">
             <label for="message">お問い合わせ内容</label>

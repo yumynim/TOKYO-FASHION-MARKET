@@ -24,13 +24,14 @@ TOKYO-FASHION-MARKET/
 ├── README.md                 # 人間向け（構成・設定手順・セキュリティ）
 ├── index.html                 # トップ（ヒーロー/チケット/グッズ/NEWS/開催紹介/会社/FAQ/問い合わせ）
 ├── goods.html                 # グッズ販売（チェキ商品グリッド）
-├── hagi.html                  # 企業理念・運営者情報・メンバー・スポンサー
+├── hagi.html                  # コンセプト・運営者情報・メンバー（旧: 企業理念。スポンサー欄は一時削除）
 ├── event.html                 # 過去のイベント一覧
+├── event-detail.html           # チケット詳細ページ（新規。?i=<EVENTSの配列番号> で表示切替）
 ├── tokushoho.html              # 特定商取引法に基づく表示
 ├── checkout-complete.html      # Square決済完了後の戻り先
 ├── influencer-casting.html, members.html, news.html, oubo-form.html,
 │   recruit.html, sample-sale.html, sdgs.html, sponsorship.html,
-│   volunteer.html              # その他ページ（採用・ボランティア・SDGs・協賛LP等）
+│   volunteer.html              # ナビからは volunteer.html 以外を一時的に外している（ページ自体は現存）
 ├── 404.html
 ├── css/style.css               # モノクロテーマ（全ページ共通、:root で基調色を一括管理）
 ├── js/
@@ -38,10 +39,11 @@ TOKYO-FASHION-MARKET/
 │   ├── layout.js                # 共通ヘッダー/フッター注入・ナビ（通知ベルのHTMLもここで注入）
 │   ├── config.js                # Supabase接続先（公開してよい値のみ）
 │   ├── auth.js                  # ログイン管理（Google/メール、Supabase Auth）＋ ログインゲート（gateContent）
-│   ├── notifications.js         # アプリ内通知（notificationsテーブルの取得・既読化・ベルUI）（新規）
+│   ├── notifications.js         # アプリ内通知（notificationsテーブルの取得・既読化・ベルUI）
 │   ├── ui.js                    # モーダル・ログイン画面・アカウントメニュー
 │   ├── store.js                 # カート・チェックアウト（MAX_QTY=30でサーバー側上限と一致）
-│   ├── main.js, pages.js        # 各ページの初期化・描画ロジック（pages.js に members() を追加）
+│   ├── main.js, pages.js        # 各ページの初期化・描画ロジック
+│   ├── event-detail.js          # チケット詳細ページの表示・購入ボタン（新規）
 │   ├── checkout-complete.js     # 購入完了ページの注文確認ポーリング（/api/order-status）
 │   └── vendor/supabase.min.js   # Supabase JS SDK（CSP対応のため自己ホスト）
 ├── api/
@@ -185,11 +187,45 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
   実送信されない設計にした（ドメイン未接続の間に誤送信・失敗送信が起きないようにする安全策）
 - `.env.example` / `README.md`（Resend設定手順・環境変数一覧） / `CLAUDE.md`（変更してはいけない仕様）を更新
 
+## 2026-07-29 セッション7（サイトコンテンツの大幅改修）
+- **ナビゲーション整理**: 「その他」ドロップダウンを一時廃止（`js/layout.js`）。
+  `sponsorship.html`/`recruit.html`/`oubo-form.html`/`sdgs.html`/`influencer-casting.html`/
+  `sample-sale.html`/`members.html` はページ自体は残るがナビからは非表示。`volunteer.html` のみ
+  メインナビへ昇格
+- **「企業理念」→「コンセプト」に全面的に変更**（`hagi.html`のtitle/見出し/meta、`index.html`見出し、
+  `js/layout.js`のナビ・フッターラベル、`js/pages.js`のコメント）
+- **チケット購入を詳細ページ形式に変更**（参考サイト準拠）。新規 `event-detail.html` + `js/event-detail.js`。
+  `?i=<EVENTSの配列番号>` でイベント内容・写真（最大3枚、現状プレースホルダー）・説明文・価格を表示し、
+  「チケット購入」ボタンから既存の`Store.openTicket()`モーダルを開く。トップの各イベントカードは
+  このページへのリンクに変更（`js/main.js`の`renderEvents()`）。`js/data.js`の`EVENTS`に`images`配列を追加
+- **NEWS**: 「公式サイトをオープンしました」記事を追加（`js/data.js`の`NEWS_ARTICLES`、`body`フィールド新設）。
+  タップで別ページへ遷移せず、その場でアコーディオン開閉する方式に変更
+  （トップの上位3件用に`js/main.js`へ`renderNewsPreview()`を新設、`news.html`側は`js/pages.js`の`news()`を変更）
+- **メンバー**（`hagi.html`）: ダミー8名から「植谷 航輝」1名のみに変更（`js/pages.js`のMEMBERS配列）。
+  写真は後日追加予定（それまでは仮のイニシャル表示のまま）
+- **スポンサー欄削除**（`hagi.html`）: 「過去協賛頂いたスポンサー」セクションを一時削除
+  （`index.html`側の同種セクションは対象外、変更していない）
+- **商品の「詳細を挟む」ポリシーを追加**: `js/data.js`のGOODSに`quickAdd`フラグの仕組みを追加
+  （`quickAdd: false`で商品一覧の直接「カートに追加」ボタンを非表示にし、詳細モーダル経由でのみ
+  カート追加できるようにする）。現状の商品は全てチェキ（簡易品）のため全件`quickAdd`省略＝従来どおり
+  直接追加可能。チェキ以外の商品を追加する際に使う想定
+- **お問い合わせフォーム**（`index.html`）に種別セレクトを追加:
+  仕事の相談・依頼／イベントについて／取材・インタビュー／インターン希望／その他
+  （`js/main.js`の`setupContactForm()`のバリデーション対象に`select`を追加）
+- **`tokushoho.html`**: 「事業者の連絡先」を「ホームにあるお問い合わせよりご連絡ください」に、
+  「代金の支払方法・時期」を「Square決済に対応しております」にそれぞれ変更。
+  **「事業者の所在地」（神奈川県〜）は未反映のまま**（下記「未確認」参照）
+- ブラウザで全変更を確認（コンソールエラーなし、ナビ・チケット詳細・購入モーダル起動・NEWSアコーディオン・
+  グッズのクイック追加・お問い合わせの種別選択・特商法ページの表示、いずれも動作確認済み）
+
 # 現在作業中の内容
 
-Supabase認証（新規登録・ログイン）の実地確認待ち。ユーザー本人が本番サイトで新規登録→
-Supabase Authentication→Usersへの反映→再ログインの3点をテストする予定。結果待ちで
-問題があれば原因調査・修正を行う。
+1. Supabase認証（新規登録・ログイン）の実地確認待ち。ユーザー本人が本番サイトで新規登録→
+   Supabase Authentication→Usersへの反映→再ログインの3点をテストする予定。結果待ちで
+   問題があれば原因調査・修正を行う。
+2. `tokushoho.html`の「事業者の所在地」（神奈川県〜）が確定待ち。ユーザーが取引先に確認中。
+   確定次第、該当セルを書き換える
+3. イベントの詳細写真（`js/data.js`の`EVENTS[].images`）・メンバー写真が未投入（後日追加予定）
 
 # 未完了の作業
 
@@ -326,6 +362,7 @@ Supabase Authentication→Usersへの反映→再ログインの3点をテスト
 | アプリ内通知（取得・既読化・ベルUI） | `js/notifications.js` |
 | カート・チェックアウト | `js/store.js` |
 | 購入完了ページのポーリング表示 | `js/checkout-complete.js` |
+| チケット詳細ページの表示・購入ボタン | `js/event-detail.js`（HTMLは`event-detail.html`） |
 | Supabase接続設定 | `js/config.js` |
 | セキュリティヘッダー | `vercel.json` |
 
@@ -346,6 +383,14 @@ python3 -m http.server 4173
 - 自動テスト（tsc/jest等）は存在しない。変更後は必ずブラウザで目視確認する
 
 # 最終更新
+
+**2026-07-29（セッション7）**
+サイトコンテンツを大幅改修。ナビの「その他」を廃止しボランティアスタッフのみ昇格、
+「企業理念」→「コンセプト」に改名、チケット購入を詳細ページ形式（`event-detail.html`新規）に変更、
+NEWSに公式サイトオープンの記事を追加しアコーディオン形式に変更、メンバーを植谷航輝1名に縮小、
+hagi.htmlのスポンサー欄を一時削除、商品の`quickAdd`フラグ機構を追加、お問い合わせに種別セレクトを追加、
+tokushoho.htmlの連絡先・支払方法を更新。事業者所在地（神奈川県）は履歴に記録が無く未反映
+（ユーザーが取引先に確認中）。全変更をブラウザで確認済み、未コミット。
 
 **2026-07-26（セッション6）**
 Resendの事前準備を実施。`RESEND_API_KEY`がVercelに設定済み・ドメイン未接続という状況で、

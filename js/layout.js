@@ -7,23 +7,17 @@
 const NAV_ITEMS = [
   { href: "index.html", label: "ホーム" },
   { href: "goods.html", label: "グッズ販売【郵送】" },
-  { href: "hagi.html", label: "企業理念" },
+  { href: "hagi.html", label: "コンセプト" },
   { href: "event.html", label: "イベント" },
   { href: "news.html", label: "ニュース" },
   { href: "tokushoho.html", label: "特定商取引" },
+  { href: "volunteer.html", label: "ボランティアスタッフ" },
 ];
 
-// 「その他」ドロップダウンの中身（上に出さない項目はここに集約）
-const NAV_SUB_ITEMS = [
-  { href: "sponsorship.html", label: "ブース出店&サンプリング" },
-  { href: "recruit.html", label: "採用情報" },
-  { href: "oubo-form.html", label: "応募フォーム" },
-  { href: "volunteer.html", label: "ボランティアスタッフ" },
-  { href: "sdgs.html", label: "SDGsの取り組み" },
-  { href: "influencer-casting.html", label: "インフルエンサーキャスティング" },
-  { href: "sample-sale.html", label: "サンプルセール" },
-  { href: "members.html", label: "Members" },
-];
+// 「その他」ドロップダウンは一旦廃止（2026-07-29）。
+// sponsorship.html / recruit.html / oubo-form.html / sdgs.html / influencer-casting.html /
+// sample-sale.html / members.html はページ自体は残っているが、ナビからは外している
+// （必要になったらこの配列を復活させて `renderHeader()` 側のコメントアウトも戻す）
 
 function currentPage() {
   const p = location.pathname.split("/").pop();
@@ -43,10 +37,6 @@ function renderHeader() {
     <nav class="global-nav" id="globalNav" aria-label="メインメニュー">
       <ul>
         ${NAV_ITEMS.map(li).join("")}
-        <li class="has-sub">
-          <button type="button" class="sub-toggle" aria-expanded="false">その他</button>
-          <ul class="sub-menu">${NAV_SUB_ITEMS.map(li).join("")}</ul>
-        </li>
       </ul>
     </nav>
     <div class="header-actions">
@@ -103,7 +93,7 @@ function renderFooter() {
       <div>
         <h3>会社情報</h3>
         <ul>
-          <li><a href="hagi.html">企業理念・取材/メディア掲載はこちら</a></li>
+          <li><a href="hagi.html">コンセプト・取材/メディア掲載はこちら</a></li>
           <li><a href="recruit.html">採用情報</a></li>
           <li><a href="tokushoho.html">特定商取引法に基づく表示</a></li>
         </ul>

@@ -5,6 +5,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   renderEvents();
   renderGoods();
+  renderNewsPreview();
   renderInfluencers();
   renderSponsors();
   renderFaqs();
@@ -31,22 +32,18 @@ function renderEvents() {
   grid.innerHTML = EVENTS.map((ev, i) => {
     return `
       <article class="event-card">
-        <div class="event-visual">
+        <a class="event-visual" href="event-detail.html?i=${i}" aria-label="${ev.name}の詳細を見る">
           <span class="ph-label">EVENT</span>
-        </div>
+        </a>
         <div class="event-body">
-          <h3 class="event-name">${ev.name}</h3>
+          <h3 class="event-name"><a href="event-detail.html?i=${i}">${ev.name}</a></h3>
           <p class="event-date">${ev.dateLabel}</p>
           <div class="event-actions">
-            <button type="button" class="btn btn-solid ticket-buy" data-index="${i}">チケット購入</button>
+            <a class="btn btn-solid" href="event-detail.html?i=${i}">詳細・チケット購入</a>
           </div>
         </div>
       </article>`;
   }).join("");
-
-  grid.querySelectorAll(".ticket-buy").forEach((btn) =>
-    btn.addEventListener("click", () => Store.openTicket(Number(btn.dataset.index)))
-  );
 }
 
 // ---------- グッズ購入（商品グリッド + もっと見る） ----------
@@ -65,7 +62,7 @@ function renderGoods() {
           <h3 class="goods-name">${g.name}</h3>
           <p class="goods-price-label">価格</p>
           <p class="goods-price">${yen(g.price)} <span class="goods-tax">税込</span></p>
-          <button type="button" class="goods-add" data-index="${i}">カートに追加</button>
+          ${g.quickAdd === false ? "" : `<button type="button" class="goods-add" data-index="${i}">カートに追加</button>`}
         </div>
       </article>`
   ).join("");
@@ -114,6 +111,40 @@ function showMoreGoods() {
 
   const moreBtn = document.getElementById("goodsMore");
   if (moreBtn && goodsShown >= cards.length) moreBtn.hidden = true;
+}
+
+// ---------- NEWS（トップの上位3件・アコーディオン） ----------
+function renderNewsPreview() {
+  const list = document.getElementById("newsListHome");
+  if (!list) return;
+
+  list.innerHTML = NEWS_ARTICLES.slice(0, 3)
+    .map(
+      (a, i) => `
+      <li class="news-item">
+        <time>${a.date}</time>
+        <span class="news-tag">${a.cat}</span>
+        <button type="button" class="news-title" data-index="${i}" aria-expanded="false">${a.title}</button>
+        <div class="news-detail" id="newsHomeDetail${i}">
+          <div class="news-detail-inner">${a.body || "詳細は準備中です。"}</div>
+        </div>
+      </li>`
+    )
+    .join("");
+
+  bindNewsAccordion(list, "newsHomeDetail");
+}
+
+// news.html / index.html 共通: 記事タイトルをクリックすると詳細を開閉する
+function bindNewsAccordion(list, idPrefix) {
+  list.querySelectorAll(".news-title").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const detail = document.getElementById(idPrefix + btn.dataset.index);
+      const isOpen = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", String(!isOpen));
+      detail.style.maxHeight = isOpen ? "0" : detail.scrollHeight + "px";
+    });
+  });
 }
 
 // ---------- 過去出店インフルエンサー（横スクロールのアバター） ----------
@@ -179,7 +210,7 @@ function setupContactForm() {
     e.preventDefault();
 
     let valid = true;
-    form.querySelectorAll("input, textarea").forEach((el) => {
+    form.querySelectorAll("input, textarea, select").forEach((el) => {
       const ok = el.checkValidity();
       el.classList.toggle("is-error", !ok);
       if (!ok) valid = false;

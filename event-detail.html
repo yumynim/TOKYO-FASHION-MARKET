@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════
+  ページ: チケット詳細（event-detail.html）
+  URLに ?i=<EVENTSの配列番号> を付けて開く（例: event-detail.html?i=0）
+  ▼ このページで編集する場所
+  ・表示内容は js/data.js の EVENTS（name / dateLabel / price / images）から自動生成
+  ・写真を追加する場合は EVENTS の images に画像パスを最大3枚まで追加
+  ・説明文（EVENT_DESC）→ js/data.js
+
+  ▼ 全ページ共通
+  ・メニュー / フッター → js/layout.js
+  ・色やサイズ → css/style.css（先頭の :root で色を一括変更可）
+  ═══════════════════════════════════════════════════
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <title>チケット詳細 | TOKYO FASHION MARKET</title>
+  <meta name="description" content="TOKYO FASHION MARKET チケット詳細。">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Oswald:wght@400;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header"></header>
+
+  <main>
+    <div class="page-head">
+      <h1 id="edName">チケット詳細</h1>
+      <p class="page-sub" id="edDate">EVENT</p>
+    </div>
+
+    <section class="section">
+      <div class="container container-narrow">
+        <div class="event-detail-gallery" id="edGallery"></div>
+
+        <div class="text-block" id="edDesc"></div>
+
+        <div class="event-detail-buy">
+          <p class="modal-price" id="edPrice"></p>
+          <button type="button" class="btn btn-solid btn-lg" id="edBuyBtn">チケット購入</button>
+        </div>
+
+        <p class="section-more">
+          <a href="index.html#tickets" class="btn btn-outline">チケット一覧へ戻る</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer"></footer>
+
+  <script src="js/vendor/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/event-detail.js"></script>
+</body>
+</html>
