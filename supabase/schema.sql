@@ -86,10 +86,15 @@ create index if not exists notifications_user_id_created_at_idx
 
 alter table public.notifications enable row level security;
 
+-- create policy には if not exists が無く、2回目の実行で「already exists」エラーになる。
+-- このファイルは「全体を何度実行しても安全」にしたいので、drop→create のセットにしている
+-- （中身は同じポリシーを作り直しているだけで、動作は変わらない）。
+drop policy if exists "notifications_select_own" on public.notifications;
 create policy "notifications_select_own"
   on public.notifications for select
   using (auth.uid() = user_id);
 
+drop policy if exists "notifications_update_own" on public.notifications;
 create policy "notifications_update_own"
   on public.notifications for update
   using (auth.uid() = user_id)
@@ -131,6 +136,7 @@ create table if not exists public.announcements (
 
 alter table public.announcements enable row level security;
 
+drop policy if exists "announcements_select_authenticated" on public.announcements;
 create policy "announcements_select_authenticated"
   on public.announcements for select
   using (auth.role() = 'authenticated');
