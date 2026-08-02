@@ -182,10 +182,11 @@ button { font-family: inherit; cursor: pointer; }
 .hero-slide:nth-child(2) { animation-delay: 7s, 7s; }
 .hero-slide:nth-child(3) { animation-delay: 14s, 14s; }
 
-/* ★ 背景写真: 差し替えるときは img/hero/ の各ファイルを置き換えてください */
-.hero-slide-1 { background-image: url("../img/hero/hero1.jpg"); }
-.hero-slide-2 { background-image: url("../img/hero/hero2.jpg"); }
-.hero-slide-3 { background-image: url("../img/hero/hero3.jpg"); }
+/* ★ 背景写真: 差し替えるときは img/hero/ の各ファイルを置き換えてください
+   （WebP形式。JPEGより4〜5割軽く、全ての現行ブラウザで表示できる） */
+.hero-slide-1 { background-image: url("../img/hero/hero1.webp"); }
+.hero-slide-2 { background-image: url("../img/hero/hero2.webp"); }
+.hero-slide-3 { background-image: url("../img/hero/hero3.webp"); }
 
 @keyframes heroFade {
   0%    { opacity: 0; }
@@ -748,12 +749,23 @@ button { font-family: inherit; cursor: pointer; }
   .page-head--photo { min-height: 36vh; }
 }
 
-.page-head--goods { background-image: url("../img/page-head/goods.jpg"); }
-.page-head--concept { background-image: url("../img/page-head/concept.jpg"); }
-.page-head--event { background-image: url("../img/page-head/event.jpg"); }
-.page-head--news { background-image: url("../img/page-head/news.jpg"); }
-.page-head--tokushoho { background-image: url("../img/page-head/tokushoho.jpg"); }
-.page-head--volunteer { background-image: url("../img/page-head/volunteer.jpg"); }
+/* WebP形式（JPEGより4〜5割軽い）。スマホ幅では800px版（-sm）へ自動で切り替えて
+   さらに軽くする（下のメディアクエリ参照）。各ページの<head>のpreloadも同じ出し分けを
+   media属性で行っているため、画像を差し替える際は両方のファイルを更新すること */
+.page-head--goods { background-image: url("../img/page-head/goods.webp"); }
+.page-head--concept { background-image: url("../img/page-head/concept.webp"); }
+.page-head--event { background-image: url("../img/page-head/event.webp"); }
+.page-head--news { background-image: url("../img/page-head/news.webp"); }
+.page-head--tokushoho { background-image: url("../img/page-head/tokushoho.webp"); }
+.page-head--volunteer { background-image: url("../img/page-head/volunteer.webp"); }
+@media (max-width: 600px) {
+  .page-head--goods { background-image: url("../img/page-head/goods-sm.webp"); }
+  .page-head--concept { background-image: url("../img/page-head/concept-sm.webp"); }
+  .page-head--event { background-image: url("../img/page-head/event-sm.webp"); }
+  .page-head--news { background-image: url("../img/page-head/news-sm.webp"); }
+  .page-head--tokushoho { background-image: url("../img/page-head/tokushoho-sm.webp"); }
+  .page-head--volunteer { background-image: url("../img/page-head/volunteer-sm.webp"); }
+}
 .page-head h1 {
   font-size: clamp(26px, 4.5vw, 40px);
   font-weight: 900;
