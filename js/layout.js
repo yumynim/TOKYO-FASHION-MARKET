@@ -114,22 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (header && !header.innerHTML.trim()) header.innerHTML = renderHeader();
   if (footer && !footer.innerHTML.trim()) footer.innerHTML = renderFooter();
 
-  // アナウンスバー（全ページ最上部の告知帯）。文言・ON/OFFは js/data.js の ANNOUNCE で編集。
-  // data.js を読み込まないページ（購入完了・管理コンソール等）では何もしない
-  if (header && typeof ANNOUNCE !== "undefined" && ANNOUNCE.enabled && ANNOUNCE.text) {
-    const bar = document.createElement("div");
-    bar.className = "announce-bar";
-    if (ANNOUNCE.href) {
-      const a = document.createElement("a");
-      a.href = ANNOUNCE.href;
-      a.textContent = ANNOUNCE.text;
-      bar.appendChild(a);
-    } else {
-      bar.textContent = ANNOUNCE.text;
-    }
-    header.parentNode.insertBefore(bar, header);
-  }
-
   // スキップリンク（アクセシビリティ）
   const main = document.querySelector("main");
   if (main && !document.querySelector(".skip-link")) {

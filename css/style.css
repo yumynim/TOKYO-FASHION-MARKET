@@ -59,19 +59,6 @@ button { font-family: inherit; cursor: pointer; }
 .btn-outline-invert:hover { background: var(--white); color: var(--black); }
 .btn-lg { padding: 14px 48px; font-size: 16px; }
 
-/* ---------- アナウンスバー（全ページ最上部の告知帯。文言は js/data.js の ANNOUNCE） ---------- */
-.announce-bar {
-  background: var(--black);
-  color: var(--white);
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 8px 16px;
-}
-.announce-bar a { color: var(--white); }
-.announce-bar a:hover { text-decoration: underline; }
-
 /* ---------- Header ---------- */
 .site-header {
   position: sticky;
