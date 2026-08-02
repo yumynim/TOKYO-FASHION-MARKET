@@ -81,6 +81,10 @@ const Auth = {
       btn.textContent = "ログイン";
       btn.classList.remove("is-logged-in");
     }
+    // ログイン中の人にだけ見せるナビ項目（マイページ）の出し分け
+    document.querySelectorAll("[data-nav-auth-only]").forEach((el) => {
+      el.hidden = !user;
+    });
   },
 
   // ---------- ログイン必須の操作の前に呼ぶ ----------

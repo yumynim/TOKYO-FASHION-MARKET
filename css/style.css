@@ -66,6 +66,14 @@ button { font-family: inherit; cursor: pointer; }
   z-index: 100;
   background: var(--white);
   border-bottom: var(--border);
+  /* ヘッダーの中身は js/layout.js が後から注入するため、注入前は高さ0になり
+     注入された瞬間にページ全体が下へ押し下げられる（ページ遷移のたびにガクッと動く原因）。
+     先に高さを確保しておくことでこのレイアウトシフトを防ぐ。
+     値はロゴ行＋ナビ行の実測値（ナビが折りたたまれる1024px以下はロゴ行のみ）。 */
+  min-height: 102px;
+}
+@media (max-width: 1024px) {
+  .site-header { min-height: 65px; }
 }
 .header-inner {
   max-width: 1280px;
@@ -695,6 +703,8 @@ button { font-family: inherit; cursor: pointer; }
    ★ 画像の差し替え: img/page-head/ の各jpgを置き換える（元データは 資料/ の
    「◯◯（見出し背景）.png」。Web用に横1800pxへ縮小したものをここに置いている） */
 .page-head--photo {
+  /* 写真の読み込みが終わるまでの間はグレーでつなぐ（真っ白からいきなり写真が出る唐突さを軽減） */
+  background-color: var(--gray-1);
   background-size: cover;
   background-position: center;
 }

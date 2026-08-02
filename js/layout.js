@@ -12,7 +12,8 @@ const NAV_ITEMS = [
   { href: "news.html", label: "ニュース" },
   { href: "tokushoho.html", label: "特定商取引" },
   { href: "volunteer.html", label: "ボランティアスタッフ" },
-  { href: "members.html", label: "マイページ" },
+  // authOnly: ログイン中の人にだけ表示する（js/auth.js の refreshHeaderUI が出し分け）
+  { href: "members.html", label: "マイページ", authOnly: true },
 ];
 
 // 「その他」ドロップダウンは一旦廃止（2026-07-29）。
@@ -27,8 +28,10 @@ function currentPage() {
 
 function renderHeader() {
   const cur = currentPage();
+  // authOnly の項目は最初は hidden で描画し、ログイン確認後に js/auth.js が表示する
+  // （未ログインの人のナビには出さない。チラッと見えてから消える形にもしない）
   const li = (item) =>
-    `<li><a href="${item.href}" ${item.href === cur ? 'class="is-active"' : ""}>${item.label}</a></li>`;
+    `<li${item.authOnly ? " data-nav-auth-only hidden" : ""}><a href="${item.href}" ${item.href === cur ? 'class="is-active"' : ""}>${item.label}</a></li>`;
 
   return `
   <div class="header-inner">
