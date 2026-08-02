@@ -714,20 +714,53 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---------- 写真背景の見出し帯 ----------
    ★ 画像の差し替え: img/page-head/ の各jpgを置き換える（元データは 資料/ の
-   「◯◯（見出し背景）.png」。Web用に横1800pxへ縮小したものをここに置いている） */
+   「◯◯（見出し背景）.png」。Web用に横1800pxへ縮小したものをここに置いている）
+
+   ホームのヒーロー（強めの白モヤ、.hero-filter参照）より弱めの白モヤをかけて、
+   タイトルの枠（背景白・罫線）は無くす代わりに、タイトル文字の背後だけ
+   ほんのり白味を強めた光暈（::before）を敷いて可読性を確保する。 */
 .page-head--photo {
+  position: relative;
+  min-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   /* 写真の読み込みが終わるまでの間はグレーでつなぐ（真っ白からいきなり写真が出る唐突さを軽減） */
   background-color: var(--gray-1);
   background-size: cover;
   background-position: center;
 }
-/* 写真の上でもサブタイトルが読めるよう、白いチップに載せる */
-.page-head--photo .page-sub {
-  display: inline-block;
-  background: var(--white);
-  padding: 4px 16px;
-  color: var(--gray-5);
+/* 弱めの白モヤ（ホームの .hero-filter と同じ考え方で、数値だけ弱めてある） */
+.page-head--photo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 70%, rgba(255,255,255,0.45) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0.3) 100%);
 }
+.page-head--photo h1,
+.page-head--photo .page-sub { position: relative; z-index: 1; }
+/* タイトルの枠（白背景・罫線）を廃止し、文字の背後だけ光暈でにじませて読みやすくする */
+.page-head--photo h1 {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.page-head--photo h1::before {
+  content: "";
+  position: absolute;
+  inset: -34% -14%;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.45) 45%, rgba(255,255,255,0) 75%);
+  pointer-events: none;
+}
+.page-head--photo .page-sub { color: var(--gray-5); }
+@media (max-width: 600px) {
+  .page-head--photo { min-height: 36vh; }
+}
+
 .page-head--goods { background-image: url("../img/page-head/goods.jpg"); }
 .page-head--concept { background-image: url("../img/page-head/concept.jpg"); }
 .page-head--event { background-image: url("../img/page-head/event.jpg"); }
@@ -742,6 +775,7 @@ button { font-family: inherit; cursor: pointer; }
   display: inline-block;
   padding: 8px 32px;
   border: var(--border);
+  position: relative;
 }
 .page-head .page-sub {
   margin-top: 16px;
