@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <!--
   ═══════════════════════════════════════════════════
-  ページ: Members（members.html）
+  ページ: マイページ（members.html）
   ▼ このページで編集する場所
-  ・メンバー限定コンテンツは [data-auth-gate] の中に書く（ログイン中のみ表示される）
+  ・会員限定コンテンツ（購入履歴・通知）は [data-auth-gate] の中（ログイン中のみ表示される）
   ・未ログイン時の案内文は [data-auth-gate-locked] の中（ログインボタンを押すとログインモーダルが開く）
   ・表示切り替えの仕組み本体は js/auth.js の Auth.gateContent()
+  ・購入履歴・通知の取得/描画は js/pages.js の PAGE_INITS.members()
+  ・購入履歴は /api/my-orders（本人の orders のみ返す）、通知は js/notifications.js の
+    Notifications オブジェクトのキャッシュ（あなたへのお知らせ／TFMからのお知らせ）を再利用
 
   ▼ 全ページ共通
   ・メニュー / フッター → js/layout.js
@@ -21,20 +24,21 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <title>Members | TOKYO FASHION MARKET</title>
+  <title>マイページ | TOKYO FASHION MARKET</title>
   <!-- SEO:start（公開ドメインが決まったら vercel.json とこの canonical/og:url を実ドメインに一括置換） -->
-  <meta name="description" content="TOKYO FASHION MARKET メンバーページ。">
+  <meta name="description" content="TOKYO FASHION MARKET マイページ。購入履歴・お知らせの確認。">
+  <meta name="robots" content="noindex,follow">
   <link rel="canonical" href="https://tokyo-fashion-market.vercel.app/members.html">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TOKYO FASHION MARKET">
-  <meta property="og:title" content="Members | TOKYO FASHION MARKET">
-  <meta property="og:description" content="TOKYO FASHION MARKET メンバーページ。">
+  <meta property="og:title" content="マイページ | TOKYO FASHION MARKET">
+  <meta property="og:description" content="TOKYO FASHION MARKET マイページ。購入履歴・お知らせの確認。">
   <meta property="og:url" content="https://tokyo-fashion-market.vercel.app/members.html">
   <meta property="og:image" content="https://tokyo-fashion-market.vercel.app/img/ogp.jpg">
   <meta property="og:locale" content="ja_JP">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Members | TOKYO FASHION MARKET">
-  <meta name="twitter:description" content="TOKYO FASHION MARKET メンバーページ。">
+  <meta name="twitter:title" content="マイページ | TOKYO FASHION MARKET">
+  <meta name="twitter:description" content="TOKYO FASHION MARKET マイページ。購入履歴・お知らせの確認。">
   <meta name="twitter:image" content="https://tokyo-fashion-market.vercel.app/img/ogp.jpg">
   <!-- SEO:end -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,13 +50,18 @@
   <header class="site-header"></header>
 
   <main>
-    <div class="page-head">
-      <h1>Members</h1>
-      <p class="page-sub">MEMBERS</p>
+    <div class="page-head page-head--plain">
+      <h1>Mypage</h1>
+      <p class="page-sub">マイページ</p>
     </div>
 
     <section class="section">
       <div class="container container-narrow text-center">
+        <!-- ログイン機能が未設定（js/config.jsがプレースホルダーのまま）のときだけ表示 -->
+        <div data-auth-gate-unconfigured hidden>
+          <p class="section-lead">ログイン機能はまだ準備中です。もうしばらくお待ちください。</p>
+        </div>
+
         <!-- 未ログイン時の案内（ログイン済みだと自動的に隠れる） -->
         <div data-auth-gate-locked hidden>
           <p class="section-lead">このページの続きはログイン後にご覧いただけます。</p>
@@ -60,16 +69,37 @@
             <button type="button" class="btn btn-solid" id="membersLoginBtn">ログイン / 新規登録</button>
           </div>
         </div>
-
-        <!-- 会員限定コンテンツ（ログイン中のみ表示。中身はここに追記していく） -->
-        <div data-auth-gate hidden>
-          <p class="section-lead">メンバー限定コンテンツのページです（準備中）。</p>
-          <div class="section-more">
-            <a href="index.html" class="btn btn-outline">ホームへ戻る</a>
-          </div>
-        </div>
       </div>
     </section>
+
+    <!-- 会員限定コンテンツ（ログイン中のみ表示） -->
+    <div data-auth-gate hidden>
+      <section class="section mypage-section mypage-greeting">
+        <div class="container container-narrow text-center">
+          <p class="section-lead" id="myGreeting">こんにちは。</p>
+          <button type="button" class="btn btn-outline" id="myLogoutBtn">ログアウト</button>
+        </div>
+      </section>
+
+      <section class="section mypage-section">
+        <div class="container container-narrow">
+          <h2 class="section-title">購入履歴</h2>
+          <p class="section-lead">これまでにお申し込みいただいたチケット・グッズの履歴です。</p>
+          <div id="myOrders" class="mypage-cards"><p class="cards-empty">読み込み中…</p></div>
+        </div>
+      </section>
+
+      <section class="section section-invert mypage-section">
+        <div class="container container-narrow">
+          <h2 class="section-title">お知らせ</h2>
+          <div class="notif-tabs" id="myNotifTabs">
+            <button type="button" class="notif-tab is-active" data-my-notif-tab="personal">あなたへのお知らせ</button>
+            <button type="button" class="notif-tab" data-my-notif-tab="broadcast">TFMからのお知らせ</button>
+          </div>
+          <div id="myNotifications" class="mypage-cards"><p class="cards-empty">読み込み中…</p></div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <footer class="site-footer"></footer>

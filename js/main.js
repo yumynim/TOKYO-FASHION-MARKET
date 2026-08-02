@@ -204,7 +204,18 @@ function renderFaqs() {
 function setupContactForm() {
   const form = document.getElementById("contactForm");
   const done = document.getElementById("formDone");
+  const errorEl = document.getElementById("formError");
   if (!form) return;
+
+  const message = document.getElementById("message");
+  const messageCounter = document.getElementById("messageCounter");
+  if (message && messageCounter) {
+    const updateCounter = () => {
+      messageCounter.textContent = `${message.value.length} / ${message.maxLength}`;
+    };
+    message.addEventListener("input", updateCounter);
+    updateCounter();
+  }
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -217,9 +228,44 @@ function setupContactForm() {
     });
     if (!valid) return;
 
-    // 送信先未接続。完了メッセージのみ表示（フォーム連携は実装時に追加）
-    form.reset();
-    done.hidden = false;
-    setTimeout(() => (done.hidden = true), 5000);
+    if (errorEl) errorEl.hidden = true;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
+    fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.name.value,
+        email: form.email.value,
+        category: form.category.value,
+        message: form.message.value,
+        company: form.company.value, // honeypot
+      }),
+    })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (submitBtn) submitBtn.disabled = false;
+        if (!ok) {
+          if (errorEl) {
+            errorEl.textContent = (data && data.error) || "送信に失敗しました。時間をおいて再度お試しください。";
+            errorEl.hidden = false;
+          }
+          return;
+        }
+        form.reset();
+        if (done) {
+          done.hidden = false;
+          done.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => (done.hidden = true), 5000);
+        }
+      })
+      .catch(() => {
+        if (submitBtn) submitBtn.disabled = false;
+        if (errorEl) {
+          errorEl.textContent = "通信エラーが発生しました。時間をおいて再度お試しください。";
+          errorEl.hidden = false;
+        }
+      });
   });
 }

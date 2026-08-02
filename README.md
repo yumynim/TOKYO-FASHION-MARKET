@@ -10,7 +10,7 @@
 - **文章・写真をもらう** → [指示テンプレート.txt](./指示テンプレート.txt)（クライアント記入用）
 - **データ（イベント・商品・ニュース・FAQ）** → `js/data.js` を書き換えるだけで反映
 - **各ページの文章** → 各HTMLの先頭コメントに「このページで編集する場所」を記載。`★` コメントが編集ポイント
-- **メニュー・フッター** → `js/layout.js` の `NAV_ITEMS` / `NAV_SUB_ITEMS`
+- **メニュー・フッター** → `js/layout.js` の `NAV_ITEMS`（「その他」ドロップダウンは現在廃止中）
 - **色・サイズ** → `css/style.css` 先頭の `:root`（`--black` を変えれば基調色が一括で変わる）
 
 編集したらブラウザを再読み込みするだけ。フロント側の編集にビルドは不要です。
@@ -21,27 +21,38 @@
 |---|---|
 | `index.html` | トップ（ヒーロー / チケット購入 / グッズ / NEWS / 開催紹介 / 会社 / FAQ / お問い合わせ） |
 | `goods.html` | グッズ販売【郵送】（チェキ商品グリッド 24点） |
-| `hagi.html` | 企業理念・運営者情報・メンバー・スポンサー |
+| `hagi.html` | コンセプト・運営者情報・メンバー（旧: 企業理念。スポンサー欄は一時削除） |
 | `event.html` | 過去のイベント一覧 |
+| `event-detail.html` | チケット詳細ページ（`?i=<EVENTSの配列番号>`。写真最大3枚対応） |
 | `tokushoho.html` | 特定商取引法に基づく表示 |
-| その他 `*.html` | 採用・ボランティア・SDGs・協賛LP 等（`js/layout.js` の「その他」メニュー参照） |
+| その他 `*.html`（`volunteer.html`除く） | 採用・SDGs・協賛LP 等。ページは現存するが現在ナビからは非表示 |
 | `checkout-complete.html` | Square決済完了後の戻り先ページ（`/api/order-status`をポーリングし実際の結果を表示） |
+| `admin-announcements.html`（`/console`） | 管理コンソール。運営からのお知らせ配信・お問い合わせ返信（合言葉ログイン） |
 | `css/style.css` | モノクロテーマ（全ページ共通） |
 | `js/data.js` | イベント・商品・ニュース・FAQ等のデータ（**まずここを編集**） |
 | `js/layout.js` | 共通ヘッダー/フッターの注入・ナビ |
 | `js/config.js` | Supabaseの接続先（公開してよい値のみ。**ここにservice_role keyは書かない**） |
 | `js/auth.js` | ログイン管理（Google／メールアドレス、Supabase Auth）＋ログインゲート（`gateContent()`） |
-| `js/notifications.js` | アプリ内通知（`notifications`テーブルの取得・既読化・ヘッダーの通知ベルUI） |
+| `js/notifications.js` | アプリ内通知（`notifications`＝あなたへのお知らせ、`announcements`＝TFMからのお知らせ）の取得・既読化・ヘッダーの通知ベルUI |
 | `js/ui.js` | モーダル・ログイン画面・アカウントメニュー |
 | `js/store.js` | カート・チェックアウト（ログイン確認 → Square決済へ） |
 | `js/checkout-complete.js` | 購入完了ページの注文確認ポーリング・表示 |
+| `js/console.js` | 管理コンソール（`/console`）の挙動。CSPのためインラインscriptにせず外出し |
 | `js/vendor/supabase.min.js` | Supabase JS SDK（CSPを`script-src 'self'`に保つため自己ホスト） |
 | `api/checkout.js` | Square決済リンクを作成するサーバー関数（ログイン再検証・価格検証・注文レコード作成） |
 | `api/_catalog.js` | サーバー側の価格マスタ（`js/data.js`と手動で同期させる） |
-| `api/_email.js` | 購入確認メール送信（Resend HTTP APIを直接fetch） |
+| `api/_email.js` | 購入確認メール送信（Resend HTTP APIを直接fetch。既存の決済フロー専用） |
+| `api/_mailer.js` | お知らせ配信・お問い合わせ対応用の共通メール送信処理（ブロックエディタのHTML生成含む） |
+| `api/_adminAuth.js` | `/console`の合言葉トークン発行・検証 |
 | `api/order-status.js` | 購入完了ページ用の注文ステータス確認API |
 | `api/webhooks/square.js` | Square Webhook受信（署名検証→注文確定→確認メール送信→アプリ内通知作成） |
-| `supabase/schema.sql` | `orders` / `notifications` テーブルのDDL（Supabase SQL Editorで実行） |
+| `api/contact.js` | お問い合わせフォームの送信先（`inquiries`へ保存・運営通知・自動受付メール） |
+| `api/admin-login.js` | `/console`のパスワード検証・トークン発行 |
+| `api/admin-announcements.js` | お知らせ配信（全員／個人／購入者／決済未完了者）の投稿・削除 |
+| `api/admin-inquiries.js` | `/console`のお問い合わせ一覧・返信 |
+| `api/admin-preview-email.js` | 配信エディタのメールプレビュー生成（送信はしない） |
+| `api/admin-upload-image.js` | 配信エディタの画像アップロード（Supabase Storage） |
+| `supabase/schema.sql` | `orders` / `notifications` / `announcements` / `inquiries` テーブルのDDL（Supabase SQL Editorで実行） |
 
 ## ログイン → 決済 → 購入確認メールの仕組み
 
@@ -66,9 +77,36 @@
 これにより、購入者には実際に支払いが確定した時点でのみメールが届き、購入完了ページにも
 実際の注文内容（商品名・数量・合計金額）が表示されます。
 
-⚠️ **既知の制約**: サイト内通知（マイページ・通知一覧など）は未実装です。購入確認は
-「購入完了ページでの表示」と「メール」の2箇所のみで、ログイン後に過去の注文履歴を
-振り返る画面はまだありません。
+⚠️ **既知の制約**: マイページ（購入履歴の一覧・詳細）は未実装です。購入確認は
+「購入完了ページでの表示」と「メール」と「ヘッダーの通知ベル」の3箇所のみで、
+ログイン後に過去の注文履歴を振り返る画面はまだありません。
+
+## 管理コンソール（`/console`）
+
+運営が会員へのお知らせ配信・お問い合わせ対応をコード変更なしで行うための管理画面。
+Supabaseの個人アカウントではなく、`ADMIN_CONSOLE_PASSWORD`（Vercel環境変数）を知っている人なら
+誰でも使える合言葉方式。
+
+- お知らせ配信: 「会員全員に送る」／「個人宛てに送る」／「購入者に送る（商品/チケット単位）」／
+  「手続き中の人に送る（決済未完了）」の4種類。見出し・画像・ボタン等を組み立てるブロックエディタと、
+  実際に届くメールのライブプレビュー付き
+- お問い合わせ管理: サイトのお問い合わせフォーム（`/api/contact`）から届いた内容の一覧・返信
+- 会員全員宛ての投稿は`announcements`テーブルに保存され、ヘッダーの通知ベル「TFMからのお知らせ」タブに
+  会員全員へ表示される。個人／購入者／決済未完了者宛ては`notifications`テーブル（本人の「あなたへの
+  お知らせ」タブにのみ表示）を使う
+
+セットアップ:
+1. `supabase/schema.sql`（`announcements`/`inquiries`テーブル・`notifications.body_html`列の追加分）を
+   Supabase SQL Editorで実行
+2. Vercel環境変数に `ADMIN_CONSOLE_PASSWORD`（必須）・`CONTACT_TO_EMAIL`（任意、お問い合わせの見逃し
+   防止通知の宛先）を設定 → Redeploy
+3. 画像アップロード機能を使う場合は、Supabase Storageに `announcement-images`（Publicバケット）を
+   手動作成（未作成でも他の機能には影響しない）
+4. `https://<本番ドメイン>/console` にアクセスし、合言葉でログイン
+
+メール送信は購入確認メールと同じ安全スイッチ（`RESEND_API_KEY`/`RESEND_FROM_EMAIL`/
+`RESEND_SEND_ENABLED=true`）を共有しているため、ドメイン未接続の間はお知らせ配信・お問い合わせ
+返信のメールも自動的にスキップされる（サイト内通知・DB保存は影響を受けない）。
 
 ## 今後の設定手順（Vercel / Supabase / Resend / Square）
 
@@ -124,6 +162,8 @@
 | `RESEND_FROM_EMAIL` | 公開可（送信元アドレス。★ドメイン接続後はこれだけ変更すればよい） |
 | `RESEND_SEND_ENABLED` | 公開可。`true`の時だけ実際に送信する本番スイッチ（ドメイン接続完了までは未設定/`false`のままにする） |
 | `SITE_URL` | 公開可（決済完了後の戻り先URL・Webhook署名検証に使用） |
+| `ADMIN_CONSOLE_PASSWORD` | **非公開・Vercelのみ**（`/console`のログイン合言葉。トークンの署名鍵も兼ねる） |
+| `CONTACT_TO_EMAIL` | 非公開推奨（お問い合わせフォームの「届きました」通知メールの宛先。未設定でも保存自体は動作する） |
 
 3. Deploy。`/api` 配下のファイルは自動でサーバーレス関数として認識されます（追加設定不要）
 

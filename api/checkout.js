@@ -20,12 +20,22 @@
 //   SITE_URL                    ← 例: https://tokyo-fashion-market.vercel.app
 // ==========================================================
 
+const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 const { GOODS, EVENTS } = require("./_catalog");
 
 const MAX_QTY_PER_LINE = 30; // お一人様の購入上限（サイトのFAQ表記に合わせる）
 // Square API のバージョン。意図的に固定し、更新する時だけ手動で変更する運用にしています。
 const SQUARE_VERSION = "2024-01-18";
+
+// 購入者が問い合わせ時に口頭/メールで伝えやすい短い識別番号（内部的にはordersのUUIDが正）。
+// 例: TFM-20260802-A1B2。日付＋4桁のランダム英数字で、この規模なら衝突はほぼ起こらない
+// （万一UNIQUE制約に引っかかっても、呼び出し側でリトライする）。
+function generateOrderNumber() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = crypto.randomBytes(4).toString("hex").slice(0, 4).toUpperCase();
+  return `TFM-${date}-${rand}`;
+}
 
 function squareBaseUrl() {
   return process.env.SQUARE_ENVIRONMENT === "production"
@@ -95,7 +105,7 @@ module.exports = async (req, res) => {
       quantity: String(qty),
       base_price_money: { amount: ev.price, currency: "JPY" },
     });
-    orderLineItems.push({ name: ev.name + "（チケット）", quantity: qty, amount: ev.price * qty });
+    orderLineItems.push({ name: ev.name + "（チケット）", quantity: qty, amount: ev.price * qty, type: "ticket" });
   } else {
     const items = Array.isArray(body.items) ? body.items : [];
     for (const it of items) {
@@ -109,7 +119,7 @@ module.exports = async (req, res) => {
         quantity: String(qty),
         base_price_money: { amount: product.price, currency: "JPY" },
       });
-      orderLineItems.push({ name: product.name, quantity: qty, amount: product.price * qty });
+      orderLineItems.push({ name: product.name, quantity: qty, amount: product.price * qty, type: "goods" });
     }
     if (!lineItems.length) {
       res.status(400).json({ error: "カートが空か、購入できる商品がありません。" });
@@ -126,17 +136,26 @@ module.exports = async (req, res) => {
   const amountTotal = orderLineItems.reduce((n, i) => n + i.amount, 0);
 
   // ---------- 3. 注文レコードを先に作成（Webhook到達時の突合・メール送信に使う） ----------
-  const { data: orderRow, error: orderInsertError } = await supabaseAdmin
-    .from("orders")
-    .insert({
-      user_id: user.id,
-      buyer_email: user.email || null,
-      line_items: orderLineItems,
-      amount_total: amountTotal,
-      status: "pending",
-    })
-    .select()
-    .single();
+  // order_numberはUNIQUE制約があるため、万一の衝突時は1回だけ番号を振り直して再試行する。
+  let orderRow;
+  let orderInsertError;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await supabaseAdmin
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        buyer_email: user.email || null,
+        line_items: orderLineItems,
+        amount_total: amountTotal,
+        status: "pending",
+        order_number: generateOrderNumber(),
+      })
+      .select()
+      .single();
+    orderRow = result.data;
+    orderInsertError = result.error;
+    if (orderRow || orderInsertError?.code !== "23505") break; // 23505 = unique_violation以外は再試行しない
+  }
 
   if (orderInsertError || !orderRow) {
     console.error("checkout: orders テーブルへの作成に失敗しました", orderInsertError);

@@ -29,9 +29,12 @@ TOKYO-FASHION-MARKET/
 ├── event-detail.html           # チケット詳細ページ（新規。?i=<EVENTSの配列番号> で表示切替）
 ├── tokushoho.html              # 特定商取引法に基づく表示
 ├── checkout-complete.html      # Square決済完了後の戻り先
-├── influencer-casting.html, members.html, news.html, oubo-form.html,
-│   recruit.html, sample-sale.html, sdgs.html, sponsorship.html,
-│   volunteer.html              # ナビからは volunteer.html 以外を一時的に外している（ページ自体は現存）
+├── admin-announcements.html    # 管理コンソール（/console）。合言葉ログイン、お知らせ配信・お問い合わせ管理（新規）
+├── news.html                    # ニュース一覧（ナビに残っているメインページ）
+├── volunteer.html               # ボランティアスタッフ（ナビに残っているメインページ）
+├── influencer-casting.html, members.html, oubo-form.html,
+│   recruit.html, sample-sale.html, sdgs.html, sponsorship.html
+│                                # ナビからは一時的に外している（ページ自体は現存、削除していない）
 ├── 404.html
 ├── css/style.css               # モノクロテーマ（全ページ共通、:root で基調色を一括管理）
 ├── js/
@@ -45,14 +48,23 @@ TOKYO-FASHION-MARKET/
 │   ├── main.js, pages.js        # 各ページの初期化・描画ロジック
 │   ├── event-detail.js          # チケット詳細ページの表示・購入ボタン（新規）
 │   ├── checkout-complete.js     # 購入完了ページの注文確認ポーリング（/api/order-status）
+│   ├── console.js               # 管理コンソール（/console）の挙動（新規。CSPのため外部ファイル化）
 │   └── vendor/supabase.min.js   # Supabase JS SDK（CSP対応のため自己ホスト）
 ├── api/
 │   ├── checkout.js              # Square決済リンク作成（ログイン再検証・価格検証・orders行作成）
 │   ├── _catalog.js              # サーバー側の価格マスタ（js/data.js と手動同期が必要）
-│   ├── _email.js                # 購入確認メール送信（Resend HTTP APIを直接fetch）
+│   ├── _email.js                # 購入確認メール送信（Resend HTTP APIを直接fetch。既存の決済フロー専用・無変更）
+│   ├── _mailer.js               # お知らせ配信・お問い合わせ対応用の共通メール送信処理（新規。_email.jsとは独立）
+│   ├── _adminAuth.js            # /console の合言葉トークン発行・検証（新規）
 │   ├── order-status.js          # 購入完了ページ用の注文ステータス確認API（service_role経由）
+│   ├── contact.js               # お問い合わせフォーム送信先。inquiries保存＋運営通知＋自動受付メール（新規）
+│   ├── admin-login.js           # /console のパスワード検証・トークン発行（新規）
+│   ├── admin-announcements.js   # お知らせ配信（全員/個人/購入者/決済未完了者）の投稿・削除（新規）
+│   ├── admin-inquiries.js       # /console のお問い合わせ一覧・返信（新規）
+│   ├── admin-preview-email.js   # 配信エディタのメールプレビュー生成、送信はしない（新規）
+│   ├── admin-upload-image.js    # 配信エディタの画像アップロード（Supabase Storage、新規）
 │   └── webhooks/square.js       # Square Webhook受信（署名検証→orders確定→確認メール送信→notifications作成）
-├── supabase/schema.sql          # orders / notifications テーブルのDDL（Supabase SQL Editorで実行）
+├── supabase/schema.sql          # orders / notifications / announcements / inquiries テーブルのDDL（Supabase SQL Editorで実行）
 ├── vercel.json                  # CSP・セキュリティヘッダー
 ├── .env.example                 # 環境変数一覧（実値は書かない）
 ├── 要件確認ヒアリングシート.docx  # クライアント記入用（仕様確定）
@@ -218,6 +230,53 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 - ブラウザで全変更を確認（コンソールエラーなし、ナビ・チケット詳細・購入モーダル起動・NEWSアコーディオン・
   グッズのクイック追加・お問い合わせの種別選択・特商法ページの表示、いずれも動作確認済み）
 
+## 2026-08-01 セッション9（管理コンソール `/console` の新規実装）
+
+姉妹プロジェクト DRESS CODE TOKYO（`~/アプリケーション/DORESS CODE TOKYO`）の `/console`
+（合言葉方式の管理画面）とほぼ同じ概要で、TFMにも管理コンソールを実装。あわせて、
+「送信先未接続でお問い合わせフォームがどこにも送信されていなかった」実害も解消した。
+
+- **事実確認**: `js/main.js`の`setupContactForm()`は元々**バックエンド未接続**で、
+  成功メッセージを出すだけで実際には何も送信していなかった（Resend未接続が原因ではなかった）
+- **`supabase/schema.sql`に追記**（既存テーブルの列は変更せず、ALTER/新規CREATEのみ）:
+  - `notifications`に`body_html`列を追加（ブロックエディタの画像等をサイト内表示するため）
+  - 新規`announcements`テーブル（全員向け告知。RLSは`select`のみ許可、insert/deleteはservice_role限定）
+  - 新規`inquiries`テーブル（お問い合わせ内容。RLS有効・ポリシーなし＝完全にservice_role経由）
+  - **未実行**: この追記分はまだSupabase SQL Editorで実行されていない（下記「未完了の作業」参照）
+- **新規API**: `api/_mailer.js`（お知らせ配信・お問い合わせ用の共通メール送信処理。ブロックエディタの
+  レンダリングも担う。既存の購入確認メール`api/_email.js`とは独立させ、動作確認済みの決済フローには
+  一切触れていない）、`api/_adminAuth.js`（合言葉トークン発行・検証）、`api/admin-login.js`、
+  `api/admin-announcements.js`（全員/個人/購入者/決済未完了者への配信・削除）、`api/admin-inquiries.js`
+  （お問い合わせ一覧・返信）、`api/admin-preview-email.js`（配信メールのライブプレビュー）、
+  `api/admin-upload-image.js`（Supabase Storageへの画像アップロード）、`api/contact.js`
+  （お問い合わせフォームの実送信先。honeypot＋簡易レート制限あり）
+- **セグメント配信の設計**: DRESS CODE TOKYOはSquare Catalog Object IDでセグメントを判定しているが、
+  TFMはPayment Linkに商品名を直接渡す方式（Catalog未使用）のため、`orders.line_items`の**商品名**で
+  購入者セグメントを判定するよう調整（`api/admin-announcements.js`の`segmentKeyOf()`）
+- **`notifications.type`はNOT NULL制約があるため**、管理画面から挿入する行には
+  `admin_personal`/`admin_segment`/`admin_pending`のtype値を設定するようにした
+  （購入確認通知の`order_paid`とは別区分。表示ロジックには影響しない）
+- **CSPを理由にDRESS CODE TOKYOと構成を変えた点**: TFMの`vercel.json`は`script-src 'self'`
+  （インラインscript禁止、CLAUDE.mdの恒久ルール）を維持しているため、DRESS CODE TOKYOのように
+  管理ページへ直接`<script>`を書く方式ではなく、`js/console.js`として外部ファイル化した。
+  また管理ページのヘッダー/フッターもTFM他ページと同じ`js/layout.js`の`.site-header`/`.site-footer`
+  注入をそのまま使い、DRESS CODE TOKYOのような独自ヘッダーの複製はしていない
+- **`js/notifications.js`を拡張**: 既存の`notifications`（本人向け、既読管理あり）に加えて
+  `announcements`（全員向け、既読管理なし）も取得し、通知パネルに「あなたへのお知らせ」/
+  「TFMからのお知らせ」の2タブを追加。announcements側の新着判定はlocalStorageの最終閲覧時刻で簡易判定
+- **`index.html`のお問い合わせフォームにhoneypot欄（`company`）を追加**、`js/main.js`の
+  `setupContactForm()`を`/api/contact`への実送信に置き換え（送信中/エラー表示付き）
+- **`vercel.json`に`/console`→`admin-announcements.html`のrewriteを追加**（既存のCSP等headersは無変更）
+- **`.claude/launch.json`を新規作成**（プロジェクトローカル。`python3 -m http.server 4173`、
+  以前はグローバル設定を前提にしていたが実体が無かったため、プロジェクト側に用意した）
+- **ローカルブラウザで確認**: `admin-announcements.html`をロック解除した状態でDOM構造・テキストを確認
+  （タブ切替・ブロックエディタのツールバー・プレビューiframe・お問い合わせ/一覧/個人宛て履歴の3セクション
+  が意図通り表示されることを確認。コンソールエラーなし）。`index.html`のcontactFormにhoneypot欄と
+  エラー表示要素が存在することも確認。**`/api`配下はVercel環境が必要なため、実際のログイン・投稿・
+  返信・お問い合わせ送信の動作は未検証**（構文チェック`node --check`は全新規/変更JSファイルで通過済み）
+- 既存の決済・Webhook・購入確認メールのフロー（`api/checkout.js`, `api/webhooks/square.js`,
+  `api/_email.js`）は無変更
+
 # 現在作業中の内容
 
 1. Supabase認証（新規登録・ログイン）の実地確認待ち。ユーザー本人が本番サイトで新規登録→
@@ -226,51 +285,100 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 2. `tokushoho.html`の「事業者の所在地」（神奈川県〜）が確定待ち。ユーザーが取引先に確認中。
    確定次第、該当セルを書き換える
 3. イベントの詳細写真（`js/data.js`の`EVENTS[].images`）・メンバー写真が未投入（後日追加予定）
+4. **管理コンソール（/console）の実地確認待ち**（セッション9で新規実装、下記「未完了の作業」P0.5参照）
 
 # 未完了の作業
 
-## Supabase認証の実地確認（最優先・進行中）
-- [ ] 本番サイトで新規登録テスト（メール/パスワード）
-- [ ] Supabase Authentication → Users にユーザーが追加されるか確認
-- [ ] ログアウト後、同じアカウントで再ログインできるか確認
+> 各項目に「誰が」を付記（**あなた**＝ダッシュボード操作・実機確認など人間側の作業／**Claude**＝コード変更）。
+> 優先度は上から順（P0が最優先）。
 
-## 本番化前に必要な設定（README「今後の設定手順」参照）
-- [x] Supabase プロジェクト作成 → **完了**（Google OAuth有効化・Redirect URLs登録は未確認、必要なら別途）
-- [x] ~~`supabase/schema.sql` を Supabase SQL Editor で実行~~ → **完了**（`orders` / `notifications`
-      2テーブルともSuccessを確認済み）
-- [x] ~~`js/config.js` に本番の `SUPABASE_URL` / `SUPABASE_ANON_KEY` を設定~~ → **完了**（コミット`df1fde1`）
-- [x] ~~Vercel 環境変数に `SUPABASE_SERVICE_ROLE_KEY` を設定~~ → **完了**
-      （`SUPABASE_URL` / `SUPABASE_ANON_KEY` もVercel側に設定済み。ただし`/api`配下のコードが実際に参照するのは
-      `SUPABASE_URL`と`SUPABASE_SERVICE_ROLE_KEY`の組み合わせのみで`SUPABASE_ANON_KEY`は未使用。
-      フロント（ブラウザ）側は`js/config.js`に直書きした値を見るため、Vercelの`SUPABASE_ANON_KEY`はどこからも
-      参照されていない＝設定しても害はないが、フロントの動作には`js/config.js`の値が効いている点に注意）
-- [ ] Supabase Auth の SMTP 送信元を Resend に設定（**後回し**。デフォルトのSupabase送信でまず認証動作を確認する）
-- [x] ~~Vercel 環境変数に `RESEND_API_KEY` を設定~~ → **完了**（Redeploy済み。ただし`RESEND_SEND_ENABLED`が
-      無いため、この時点ではまだ実送信されない設計になっている）
-- [ ] Vercel 環境変数に `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` /
-      `SQUARE_ENVIRONMENT` / `SQUARE_WEBHOOK_SIGNATURE_KEY` / `SITE_URL` を設定（**後回し**）
-- [ ] Square Developer Dashboard で Webhook を登録（**後回し**）
-- [ ] Resendで送信ドメインのSPF/DKIM認証を完了（**後回し**。独自ドメイン取得後）
-- [ ] ドメイン接続後: Vercelの `RESEND_FROM_EMAIL` を認証済みアドレスに変更 →
-      `RESEND_SEND_ENABLED` を `true` に変更 → Redeploy（この3手順のみでメール送信が本番有効化される）
-- [ ] Square を sandbox で実際にテスト決済（**後回し**）
-- [ ] Square を production に切り替え（**後回し**）
+## P0. Supabase認証の実地確認（進行中・最優先）
+- [ ] **（あなた）** 本番サイト（https://tokyo-fashion-market.vercel.app ）で新規登録をテスト
+      （メールアドレス＋パスワード）。※必ずタブを開き直す/ハード再読み込みしてから行うこと
+      （キャッシュされた古い`js/config.js`のままだと「ログイン機能はまだ設定中です」という
+      誤ったエラーが出る。実際には設定済みなのでコード側の問題ではない）
+- [ ] **（あなた）** Supabaseダッシュボード → Authentication → Users に、登録したメールアドレスの
+      ユーザーが追加されているか確認
+- [ ] **（あなた）** 一度ログアウトし、同じメールアドレス・パスワードで再ログインできるか確認
+- [ ] **（Claude）** 上記でエラーが出た場合、エラーメッセージの内容を教えてもらって原因調査・修正
 
-## 機能面
-- [x] ~~Square Webhook 未実装~~ → **今回実装済み**（`api/webhooks/square.js`）。支払い確定後に
-      `orders.status` を `paid` に更新し、確認メールを送信する
-- [x] ~~サイト内通知（購入確認）は未実装~~ → **セッション4で実装済み**（`notifications`テーブル＋
-      `js/notifications.js`＋ヘッダーの通知ベル）。購入確定時にWebhookから1件作成される。
-      ただし実クレデンシャルが無く実地未検証（下記「未確認」参照）
-- [ ] **マイページ（購入履歴の一覧・詳細）は依然未実装**。通知は「直近の購入確認」のみで、
-      過去の注文を後から一覧で振り返る画面ではない。必要なら別途設計が必要
-- [ ] **ログインゲート（`Auth.gateContent()`）は`members.html`にのみ適用済み**。
-      他のページ・セクションを会員限定にする場合は、同じ`[data-auth-gate]`パターンを追加するだけでよい
-- [ ] `api/checkout.js` で Square API 呼び出し前に作成した `orders` 行が、Square側の失敗時に
-      `status:'failed'` へ更新されるが、**Square呼び出し自体がタイムアウトした場合は
-      orphanなpending行が残る可能性がある**（軽微。手動クリーンアップか将来的なバッチ処理で対応）
-- [ ] ダミーデータの差し替え（`js/data.js` の `GOODS` / `PAST_INFLUENCERS`、`hagi.html` / `tokushoho.html` の会社情報、一部画像）
-- [ ] 独自ドメイン確定後の一括置換（canonical / og:url / robots.txt / sitemap.xml / `SITE_URL`）
+## P0.5. 管理コンソール（/console）の実地確認（セッション9で実装・未検証）
+- [ ] **（あなた）** `supabase/schema.sql`の追記分（`notifications.body_html`列・`announcements`/
+      `inquiries`テーブル・`orders.order_number`列・`orders.entry_code`列）をSupabase SQL Editorで実行
+- [ ] **（あなた）** Vercel環境変数に`ADMIN_CONSOLE_PASSWORD`（必須）・`CONTACT_TO_EMAIL`（任意）を
+      設定 → Redeploy
+- [ ] **（あなた・任意）** 配信エディタの画像アップロードを使うなら、Supabase Storageに
+      `announcement-images`（Publicバケット）を手動作成
+- [ ] **（あなた）** 本番で`/console`にログインし、お知らせ配信（全員/個人/購入者/決済未完了者の4種）・
+      お問い合わせ一覧・返信を一通り試す
+- [ ] **（あなた）** サイトのお問い合わせフォームから実際に送信し、`inquiries`に保存されること・
+      `/console`に表示されること・（`RESEND_SEND_ENABLED=true`なら）通知/自動受付メールが届くことを確認
+- [ ] **（Claude）** 上記でエラーが出た場合、原因調査・修正
+
+## P1. 特定商取引法ページの事業者所在地確定
+- [ ] **（あなた）** 神奈川県〜の事業者所在地（番地まで）を取引先に確認
+- [ ] **（Claude）** 確定した住所を `tokushoho.html` の「事業者の所在地」欄に反映
+      （現状はBASE株式会社の住所がプレースホルダーとして残っている）
+
+## P2. Square決済の本番導入（後回し方針・着手は任意のタイミングで）
+- [ ] **（あなた）** Square Developer Dashboardでアプリを作成し、Sandbox用の
+      `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` を取得
+- [ ] **（あなた）** Vercel環境変数に `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` /
+      `SQUARE_ENVIRONMENT=sandbox` / `SITE_URL`（仮ドメインのままでよい）を設定 → Redeploy
+- [ ] **（あなた）** Square Developer Dashboard → Webhooks で
+      Notification URL（`{SITE_URL}/api/webhooks/square`）を登録し、購読イベントに`payment.updated`を追加。
+      発行されたSignature Keyを控える
+- [ ] **（あなた）** Vercel環境変数に `SQUARE_WEBHOOK_SIGNATURE_KEY` を設定 → Redeploy
+- [ ] **（あなた）** Sandboxで実際にテスト決済を行い、以下を確認:
+  - [ ] 購入完了ページ（`checkout-complete.html`）に注文内容が表示される
+  - [ ] Supabaseの`orders`テーブルで該当行が`status: paid`になっている
+  - [ ] ヘッダーの通知ベルに購入確認の通知が届く（`notifications`テーブルへのINSERTも合わせて確認）
+  - [ ] （`RESEND_SEND_ENABLED=true`にしていれば）確認メールが届く。ドメイン未接続の間はスキップされるのが正常
+- [ ] **（あなた）** Sandboxで問題なければ、本番用の Access Token / Location ID に差し替え、
+      `SQUARE_ENVIRONMENT=production` に変更 → Redeploy
+
+## P3. Resendの送信ドメイン接続（独自ドメイン取得後）
+- [ ] **（あなた）** 独自ドメインを取得し、Vercelに接続
+- [ ] **（あなた）** Resendダッシュボードで送信ドメイン（`mail.`等のサブドメイン推奨）を追加し、
+      表示されるSPF/DKIM/DMARCのDNSレコードをドメインの管理画面に設定・認証を完了させる
+- [ ] **（あなた）** Vercel環境変数 `RESEND_FROM_EMAIL` を認証済みドメインの送信元アドレスに変更
+- [ ] **（あなた）** Vercel環境変数 `RESEND_SEND_ENABLED` を `true` に変更 → Redeploy
+      （この3手順が終わるまでは、コードは意図的にメール送信をスキップし続ける安全設計）
+- [ ] **（あなた・任意）** Supabase Auth の SMTP送信元もResendに変更（現状はSupabaseのデフォルト送信のまま）
+
+## P4. 独自ドメイン確定後の一括置換
+- [ ] **（Claude）** 全HTMLの `https://tokyo-fashion-market.vercel.app` を実ドメインに一括置換
+      （canonical / og:url / og:image / JSON-LD）
+- [ ] **（Claude）** `robots.txt` と `sitemap.xml` の同URLも置換
+- [ ] **（あなた）** Vercel環境変数 `SITE_URL` を実ドメインに変更 → Redeploy
+      （Square Webhookの署名検証・決済完了後のリダイレクト先に影響するため、Webhook側のNotification URLも
+      合わせて更新が必要）
+
+## P5. コンテンツ整備（優先度低・随時）
+- [ ] **（あなた）** イベントの詳細写真を`js/data.js`の`EVENTS[].images`に追加（最大3枚/件、`event-detail.html`に反映される）
+- [ ] **（あなた）** メンバー（植谷航輝）の写真を追加（現状は仮のイニシャル表示。追加方法は`js/pages.js`の`PAGE_INITS.hagi()`を要相談）
+- [ ] **（あなた）** ダミーデータの差し替え（`js/data.js`の`GOODS`名称・`PAST_INFLUENCERS`、その他会社情報・画像）
+- [ ] **（あなた・任意）** hagi.htmlのスポンサー欄を復活させる場合、掲載するスポンサーが決まり次第Claudeへ依頼
+
+## P6. 将来的な機能拡張（要検討・現時点では未着手）
+- [ ] マイページ（購入履歴の一覧・詳細）。現状の通知ベルは「直近の購入確認」のみで、
+      過去の注文を一覧で振り返る画面ではない
+- [ ] ログインゲート（`Auth.gateContent()`）を`members.html`以外にも適用するか検討。
+      適用自体は`[data-auth-gate]`属性を追加するだけで既存の仕組みが使い回せる
+- [ ] 「その他」ナビ（`sponsorship.html`/`recruit.html`/`oubo-form.html`/`sdgs.html`/
+      `influencer-casting.html`/`sample-sale.html`/`members.html`）を再度メニューに載せるか検討
+- [ ] Google OAuthを実際に有効化するか（現状メール/パスワードのみ運用、Supabase側のRedirect URLs登録も未確認）
+
+## 既知の軽微な課題（緊急度低）
+- [ ] `api/checkout.js`でSquare API呼び出し自体がタイムアウトした場合、`orders`に
+      `status: pending`の行が残り続ける可能性がある（手動クリーンアップか将来のバッチ処理で対応）
+
+## 完了済み（旧チェックリストより。詳細は該当セッションのログ参照）
+- [x] Square Webhook実装（`api/webhooks/square.js`、セッション2）
+- [x] サイト内通知（購入確認）実装（`notifications`テーブル＋`js/notifications.js`、セッション4）
+- [x] Supabaseプロジェクト作成・Vercel環境変数設定・`schema.sql`実行・`js/config.js`反映（セッション5）
+- [x] Resendの事前準備（送信元定数化・`RESEND_SEND_ENABLED`スイッチ、セッション6）
+- [x] サイトコンテンツ大幅改修（ナビ整理・コンセプト改名・チケット詳細ページ等、セッション7）
 
 ## 確認済み（2026-07-24、本番サイトを直接検証）
 - **本番の `js/config.js` はプレースホルダーのまま**（`YOUR-PROJECT-REF` / `YOUR-ANON-PUBLIC-KEY`）
@@ -314,7 +422,7 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
   片方だけだと表示価格と決済価格がズレる
 - **`js/config.js` に service_role key や Square Access Token を書かない**（サーバー専用値はVercel環境変数のみ）
 - 各HTMLの先頭コメントに「このページで編集する場所」が書かれている（`★` コメントが編集ポイント）。まずそこを確認する
-- メニュー・フッターの変更は `js/layout.js` の `NAV_ITEMS` / `NAV_SUB_ITEMS`
+- メニュー・フッターの変更は `js/layout.js` の `NAV_ITEMS`（「その他」ドロップダウンは2026-07-29セッション7で一時廃止）
 - 色・サイズは `css/style.css` 先頭の `:root`（`--black` が基調色）
 - 変更後はブラウザで目視確認する（自動テストが存在しないプロジェクトのため）
 
@@ -364,7 +472,11 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 | 購入完了ページのポーリング表示 | `js/checkout-complete.js` |
 | チケット詳細ページの表示・購入ボタン | `js/event-detail.js`（HTMLは`event-detail.html`） |
 | Supabase接続設定 | `js/config.js` |
-| セキュリティヘッダー | `vercel.json` |
+| セキュリティヘッダー・`/console`のrewrite | `vercel.json` |
+| 管理コンソール（お知らせ配信・お問い合わせ管理） | `admin-announcements.html` / `js/console.js`（`/console`でも開ける） |
+| お知らせ配信・お問い合わせ用の共通メール送信 | `api/_mailer.js` |
+| `/console`の合言葉認証 | `api/_adminAuth.js` / `api/admin-login.js` |
+| お問い合わせフォームの受信 | `api/contact.js` |
 
 # 動作確認方法
 
@@ -382,7 +494,194 @@ python3 -m http.server 4173
   （ローカルで試すには `vercel dev` が必要。Webhookのローカル検証にはさらにトンネリングが要る）
 - 自動テスト（tsc/jest等）は存在しない。変更後は必ずブラウザで目視確認する
 
+## 2026-08-01 セッション10（通知パネルのタブ切替バグ修正）
+
+ユーザー報告「タブを切り替えるたびにサムネイルがガタつく（グラっとする）」を調査・修正。
+
+- **根本原因（実際にブラウザで再現して特定）**: `js/notifications.js`の通知タブ（あなたへの
+  お知らせ/TFMからのお知らせ）ボタンをクリックすると、そのクリックイベント自身のハンドラ内で
+  `renderPanel()`がパネルの中身（クリックされたボタン自身を含む）を丸ごと作り直す。
+  その後イベントが`document`までバブリングした際、外側クリックでパネルを閉じる判定
+  （旧: `!wrap.contains(e.target)`）が「DOMから切り離された古いボタン要素」を
+  外側クリックと誤判定し、**タブ切替のたびに一瞬パネルが閉じていた**。これが「グラっ」の正体
+  （画像の話ではなく、パネルの開閉が一瞬起きるイベントバブリングのバグだった）
+- **修正**: `wrap.contains(e.target)`を`e.composedPath().includes(wrap)`に変更
+  （`composedPath()`はイベント発火時点の経路をスナップショットとして保持するため、
+  後からDOMが差し替わっても正しく判定できる）
+- **ついでに見つけて直した副次的な問題**: `body_html`に含まれる`<img>`タグは幅しか分からず
+  高さが不明な状態で保存されているため、画像デコード完了前後でレイアウトシフトが起きる余地があった。
+  `.notif-item-body img` / `.console-card-body img`に固定高さ＋`object-fit:cover`を`!important`で
+  適用し（保存済みHTMLのインラインstyleより優先させる必要があるため）、パネルサイズが画像読み込みで
+  後から変わらないようにした。`.console-block-thumb`（配信エディタのアップロード画像プレビュー）にも
+  同様に固定サイズを適用
+- ローカルでダミーデータ（異なる縦横比の画像2種）を使い、タブ切替を繰り返してもパネルが閉じず・
+  画像サイズも一定であることを確認。既存のカート・ログイン等への回帰なし
+
+## 2026-08-02 セッション11（決済未完了注文ツール・文字数カウンター・マイページ本格実装）
+
+ユーザーから「簡単なタスクを出してほしい」と依頼を受けて3件着手。3件目（ログインゲート）の相談から
+「マイページを本格実装したい」という話に発展し、そのまま実装した。
+
+- **`/console`に「決済未完了の注文」セクションを追加**: 新規`api/admin-orders.js`
+  （GET一覧/DELETE、`orders.status='pending'`が対象）。削除してもSquare Webhookが後から届いた場合は
+  `square_order_id`で該当行が見つからず静かに無視されるだけなので安全（`api/webhooks/square.js`の
+  既存ロジックのまま、コード変更なし）
+- **文字数カウンター**: お問い合わせフォーム（`message`）、`/console`のタイトル・段落・ハイライト
+  ブロック・お問い合わせ返信欄に、サーバー側の上限（`MAX_MESSAGE`/`MAX_PARAGRAPH_LEN`/
+  `MAX_REPLY_LEN`等）と一致した`maxlength`＋残り文字数表示を追加
+- **マイページを本格実装**（`members.html`を`[data-auth-gate]`の準備中プレースホルダーから刷新）:
+  - 新規`api/my-orders.js`: `api/checkout.js`と同じ方式でSupabaseアクセストークンを再検証し、
+    本人の`orders`のみを返す（他人の注文は見えない設計）
+  - `members.html`: 挨拶文・ページ内ログアウト・購入履歴（ステータス別バッジ：支払い済み/手続き中/失敗）・
+    通知（「あなたへのお知らせ」/「TFMからのお知らせ」タブ、ヘッダーの`Notifications`オブジェクトの
+    キャッシュをそのまま再利用し二重実装を避けた）を表示
+  - `js/layout.js`のNAV_ITEMSに「マイページ」を追加してナビから直接アクセス可能に
+  - `js/ui.js`のアカウントモーダル（ヘッダーの「マイページ」ボタン押下時）に`members.html`への
+    リンクを追加
+  - **設計判断（ユーザーとの相談で確認済み）**: ヘッダーの通知ベルは今まで通りどのページにいても
+    常時表示（「ログインしたら通知がどこでも見える」という要望を既に満たしている）。マイページは
+    それとは別に「全件をじっくり見返す場所」という役割分担。ドレスコードの`members-only.html`
+    （挨拶文・お知らせ・購入履歴の構成）を参考にした
+- **チケット/カートのログイン必須の分かりやすさを改善**（ユーザー確認: 「未ログインの人が購入を
+  押したら強制的にログインさせる」動作は元々あったが、分かりにくかったため文言で明示）:
+  `js/store.js`のチケット購入モーダル・カートの「ご購入手続きへ」ボタンが、未ログイン時は
+  最初から「ログインして購入する」/「ログインしてご購入手続きへ」という文言＋注意書きになるよう変更
+  （購入不可の仕様自体はすでにあったため機能面の変更はなし）
+- ローカルでダミーデータを使い、マイページの挨拶・購入履歴・通知タブ・ダークセクションでの
+  タブ配色（`.section-invert .notif-tabs`を新規追加）を確認。コンソールエラーなし
+- **今後の拡張候補として（未着手・要相談）**: アカウント設定（メール/パスワード変更）、
+  お気に入り/ウィッシュリスト、自分のお問い合わせ履歴の確認、再購入ショートカットなど。
+  「充実させたい」という要望があったため、次回以降に優先度を相談して着手する
+- **開発メモ**: ローカルプレビュー中、`python3 -m http.server`のポートを変えずに複数回
+  再起動すると、ブラウザプレビューツール側に強いキャッシュが乗ってJSの変更が反映されない
+  現象に遭遇した（サーバー側は`curl`で確認する限り常に最新を返していた＝実際のコードの問題ではない）。
+  ポート番号を変えると解消したため、`.claude/launch.json`のdemo-siteは`4174`に変更済み
+
+## 2026-08-02 セッション12（マイページの分かりやすさ改善・注文番号の付与）
+
+セッション11の続き。ユーザーからの追加フィードバック3点に対応。
+
+- **マイページへの導線を1段階に短縮**: ヘッダーの「ログイン」ボタンは、ログイン中は今までアカウント
+  メニュー（モーダル）を経由してからマイページへ、という二段階だったが、「マイページの場所が
+  分かりにくい」との指摘を受けて**ボタンを押すと直接`members.html`へ遷移**するように変更
+  （[js/ui.js](../js/ui.js)）。ボタンの表示文言も、ログイン中はメールアドレスの@より前ではなく
+  常に「マイページ」に統一（[js/auth.js](../js/auth.js)の`refreshHeaderUI()`）。
+  不要になったアカウントメニューのモーダル（`UI.openAccount`）は削除
+- **決済にはログイン必須、を今後も守るための恒久ルール化**: 挙動自体は元々あったが
+  （購入ボタンを押した瞬間にログインを要求）、`js/store.js`冒頭と`CLAUDE.md`に
+  「今後、決済への入口を新設する場合も必ずこの作りにすること」を明記した
+- **注文番号（`order_number`）を新規追加**: 内部的にはUUID（`orders.id`）で管理しているが、
+  購入者が問い合わせ時に伝えやすいよう`TFM-YYYYMMDD-XXXX`形式の短い番号を`api/checkout.js`が
+  注文作成時に生成（UNIQUE制約、衝突時は1回だけ再生成）。購入確認メール・購入完了ページ・
+  マイページの購入履歴・`/console`の決済未完了一覧、すべてに表示されるようにした
+  （`supabase/schema.sql`に`orders.order_number`列を追加。既存本番テーブルへは追記のALTER文で対応）
+- ローカルでダミーデータを使い、チケット/カートの購入ボタン文言（未ログイン時「ログインして購入する」）・
+  ヘッダーボタンからのマイページ直接遷移・注文番号の表示（購入完了ページ）を確認。コンソールエラーなし
+
+## 2026-08-02 セッション13（DRESS CODE TOKYOのコードを精読し、良い部分を移植）
+
+ユーザーから「ドレスコードのコードをたくさん見て、取り入れるべきところを取り入れてほしい」と依頼。
+`/console`はセッション9で既にほぼ移植済みと確認した上で、`js/auth.js`・`members-only.html`・
+`api/square-webhook.js`を中心に読み込み、以下2点を移植した（他は既に同等以上に実装済みと判断）。
+
+- **当日の入場受付コード（`entry_code`）を新規追加**: DRESS CODE TOKYOの`assignEntryCode()`パターンを
+  移植。`order_number`（注文作成時に発行、問い合わせ用の識別番号）とは別物で、**支払いが確定した時点**で
+  `api/webhooks/square.js`が発行する。見間違いやすい文字（0/O, 1/I/L, U/V等）を除いた文字セットから
+  ランダム4文字＋日付で生成し（`TFM-20260802-7K4M`形式）、UNIQUE制約違反時は最大5回まで再生成。
+  **チケットを含む注文にだけ発行**（グッズのみの注文には不要と判断し、`orderLineItems`に`type: "ticket"`/
+  `"goods"`を新規追加して判定に使用）。確認メール・アプリ内通知・購入完了ページ・マイページの
+  購入履歴、すべてに表示
+- **`members.html`のログインゲートを二値→三値に変更**: 「Supabase未設定（`Auth.client`がnull）」と
+  「設定済みだが未ログイン」を区別できるよう、`js/auth.js`の`gateContent()`に
+  `[data-auth-gate-unconfigured]`を追加（DRESS CODE TOKYOの`members-only.html`の
+  unconfigured/guest/content の3状態パターンを参考にした）。この属性が無いページでは今まで通り
+  二値のまま動作する（後方互換）
+- **見送った項目**（理由付き、Exploreエージェントによる比較調査結果）:
+  - アイコンのみのコンパクトヘッダーボタン（DRESS CODE TOKYOのモバイル対応パターン）は
+    優先度が低いと判断し今回は見送り。必要になれば`.icon-btn`パターンを流用して追加できる
+  - OAuth復帰の実装（`sessionStorage`保持方式 vs TFMの`localStorage`フラグ方式）は
+    機能的にはほぼ同等のため変更なし
+  - `/console`の検索・折りたたみ・セグメント配信等は、セッション9の時点で既にDRESS CODE TOKYOと
+    同等のパターンで実装済みと確認（変更不要）
+- ローカルでダミーデータを使い、`members.html`の3状態（未設定/未ログイン/ログイン中）の出し分け、
+  購入完了ページでの注文番号・受付コード表示を確認。コンソールエラーなし
+- **開発メモ**: ローカルプレビューでJSファイルを編集後、同じポートでサーバーを再起動しても
+  ブラウザプレビューツール側のキャッシュでJSの変更が反映されないことがある（今回もセッション11に続き発生）。
+  ポート番号を変えると解消する。`.claude/launch.json`のdemo-siteは`4175`に変更済み
+  （変更のたびにポートを変える必要はなく、JSの変更を確認できないと感じた時だけ変えればよい）
+
+## 2026-08-03 セッション14（ページ見出しに実写真を挿入・マイページ等は写真なしのプレーン見出しに）
+
+ユーザーが `資料/` に7枚の横長スクリーンショット（イベント写真・チラシの合成バナー、約2700×840px）を
+投入。撮影時間順に「ホーム・グッズ販売【郵送】・コンセプト・イベント・ニュース・特定商取引・
+ボランティアスタッフ」の7ページに対応するとの指定を受けて反映した。
+
+- **`資料/`内のファイル名を用途が分かる名前にリネーム**（例:「グッズ販売【郵送】（見出し背景）.png」。
+  ホーム用のみ「ホーム（トップのスライド背景・3分割して使用）.png」）
+- **ホーム**: 1枚目のバナー（3枚の写真の横並び合成）をImageMagickで3分割し、既存ヒーローの
+  `img/hero/hero1〜3.jpg` を差し替え（既存の「3枚がふわっと切り替わる」スライドショー実装は
+  そのまま活用。ユーザー要望「今みたいな三つの画像がふわふわする形」に合致）
+- **他6ページ**: `img/page-head/`（新規フォルダ）にWeb用へ縮小したJPEG（横1800px・約110〜200KB）を
+  配置し、`.page-head--photo`＋ページ別クラス（`--goods`/`--concept`/`--event`/`--news`/
+  `--tokushoho`/`--volunteer`）で見出し帯の斜線の代わりに静止背景として表示。
+  サブタイトル（`.page-sub`）は写真上でも読めるよう白チップに載せた
+- **マイページ・購入完了ページは写真を入れない方針**（ユーザー判断:「入れるのは負担だから
+  斜線をやめて大きく文字表示でいい」）→ 前セッションで適用済みの `.page-head--plain`
+  （単色グレー背景）のまま
+- ブラウザで7ページ全て確認（写真表示・タイトル可読性・ヒーローのスライド動作・コンソールエラーなし）
+- 画像の差し替え方法はCSSのコメントに記載（`img/page-head/`の各jpgを置き換えるだけ。
+  元データは`資料/`の「◯◯（見出し背景）.png」）
+
 # 最終更新
+
+**2026-08-03（セッション14）**
+ユーザー提供の7枚の横長写真バナーを反映。ホームはヒーロー3分割スライド差し替え、
+グッズ/コンセプト/イベント/ニュース/特定商取引/ボランティアの6ページは見出し帯の
+写真背景化（`.page-head--photo`）。`資料/`のファイル名も用途別にリネーム。
+詳細は「セッション14」節参照。
+
+**2026-08-02（セッション13）**
+DRESS CODE TOKYOのコードを精読し、当日の入場受付コード（`entry_code`）システムと、
+マイページのログインゲートの3状態化（未設定/未ログイン/ログイン中）を移植。
+`/console`は既に同等の水準にあると確認（追加移植なし）。詳細は「セッション13」節参照。
+
+**2026-08-02（セッション12）**
+マイページへの導線をヘッダーボタン1クリックに短縮し、常時「マイページ」表記に統一。
+決済ログイン必須の恒久ルール化（CLAUDE.md記載）。注文番号（`order_number`、`TFM-YYYYMMDD-XXXX`形式）を
+新規追加し、確認メール・購入完了ページ・マイページ・`/console`のすべてに表示。
+`supabase/schema.sql`に列追加（要SQL再実行、下記「未完了の作業」参照）。詳細は「セッション12」節参照。
+
+**2026-08-02（セッション11）**
+決済未完了注文の管理ツール（`/console`）、文字数カウンター、マイページ本格実装
+（購入履歴・お知らせ・挨拶・ログアウト）を追加。チケット/カートのログイン必須UXも分かりやすく改善。
+新規ファイル: `api/admin-orders.js`, `api/my-orders.js`。詳細は「セッション11」節参照。
+
+**2026-08-01（セッション10）**
+ユーザー報告「タブ切替のたびにサムネイルがガタつく」を調査し、`js/notifications.js`の外側クリック
+判定（`wrap.contains(e.target)`）が、タブ切替時のパネル再描画で切り離されたクリック元要素を
+誤って「外側」と判定しパネルを閉じてしまうバグと特定・修正（`composedPath()`ベースの判定に変更）。
+副次的な画像レイアウトシフト対策として`.notif-item-body img`/`.console-card-body img`/
+`.console-block-thumb`に固定サイズを追加。詳細は「セッション10」節参照。
+
+**2026-08-01（セッション9）**
+姉妹プロジェクト DRESS CODE TOKYOの`/console`とほぼ同じ概要で、TFMに管理コンソール
+（お知らせ配信・お問い合わせ管理）を新規実装。あわせて、これまで送信先未接続で機能していなかった
+お問い合わせフォームの受信経路（`api/contact.js`＋`inquiries`テーブル）も新規に用意した。
+新規ファイル: `admin-announcements.html`, `js/console.js`, `api/_mailer.js`, `api/_adminAuth.js`,
+`api/admin-login.js`, `api/admin-announcements.js`, `api/admin-inquiries.js`,
+`api/admin-preview-email.js`, `api/admin-upload-image.js`, `api/contact.js`。
+`supabase/schema.sql`に追記（`notifications.body_html`列、`announcements`/`inquiries`テーブル、
+既存テーブルの列は無変更）。既存の決済・Webhook・購入確認メールのフローは無変更。
+ローカルでDOM構造・テキスト表示・コンソールエラー無しを確認したが、`/api`配下の実地動作
+（Supabase/Resendの実クレデンシャルが必要）は未検証。詳細は「2026-08-01 セッション9」節と
+「P0.5」参照。
+
+**2026-07-29（セッション8）**
+ドキュメント整合性チェックとタスクリストの詳細化。`CLAUDE.md`は最新の状態を確認（修正なし）。
+`docs/PROJECT_STATE.md`/`README.md`で見つかった古い記述（`news.html`のナビ分類ミス、
+廃止済み`NAV_SUB_ITEMS`への言及、`hagi.html`の説明の古さ）を修正。「未完了の作業」を
+P0〜P6の優先度別・担当者明記（あなた/Claude）付きの詳細なタスクリストに再構成した。
+コード変更は無し。
 
 **2026-07-29（セッション7）**
 サイトコンテンツを大幅改修。ナビの「その他」を廃止しボランティアスタッフのみ昇格、

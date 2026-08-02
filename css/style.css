@@ -642,6 +642,8 @@ button { font-family: inherit; cursor: pointer; }
 .form-row select.is-error { border-color: var(--gray-4); background: var(--gray-1); }
 .form-submit { text-align: center; margin-top: 36px; }
 .form-done { margin-top: 20px; font-weight: 700; letter-spacing: 0.06em; }
+.form-error { margin-top: 20px; font-weight: 700; letter-spacing: 0.06em; color: #b3261e; }
+.char-counter { margin-top: 4px; font-size: 11.5px; color: var(--gray-4); text-align: right; }
 
 /* ---------- Footer ---------- */
 .site-footer {
@@ -685,6 +687,30 @@ button { font-family: inherit; cursor: pointer; }
   background:
     repeating-linear-gradient(-45deg, var(--gray-1) 0 14px, var(--white) 14px 28px);
 }
+/* 写真を入れない見出し用（マイページ・購入完了ページなど）。斜線パターンをやめ、
+   単色背景＋文字の枠だけで大きく見せる。 */
+.page-head--plain { background: var(--gray-1); }
+
+/* ---------- 写真背景の見出し帯 ----------
+   ★ 画像の差し替え: img/page-head/ の各jpgを置き換える（元データは 資料/ の
+   「◯◯（見出し背景）.png」。Web用に横1800pxへ縮小したものをここに置いている） */
+.page-head--photo {
+  background-size: cover;
+  background-position: center;
+}
+/* 写真の上でもサブタイトルが読めるよう、白いチップに載せる */
+.page-head--photo .page-sub {
+  display: inline-block;
+  background: var(--white);
+  padding: 4px 16px;
+  color: var(--gray-5);
+}
+.page-head--goods { background-image: url("../img/page-head/goods.jpg"); }
+.page-head--concept { background-image: url("../img/page-head/concept.jpg"); }
+.page-head--event { background-image: url("../img/page-head/event.jpg"); }
+.page-head--news { background-image: url("../img/page-head/news.jpg"); }
+.page-head--tokushoho { background-image: url("../img/page-head/tokushoho.jpg"); }
+.page-head--volunteer { background-image: url("../img/page-head/volunteer.jpg"); }
 .page-head h1 {
   font-size: clamp(26px, 4.5vw, 40px);
   font-weight: 900;
@@ -1072,6 +1098,25 @@ button { font-family: inherit; cursor: pointer; }
 }
 .notif-item-title { font-size: 13px; font-weight: 700; }
 .notif-item-body { font-size: 12.5px; color: var(--gray-4); margin-top: 4px; line-height: 1.5; }
+/* 配信エディタの画像ブロックは幅しか分からない（高さ不明）状態でHTMLが保存されているため、
+   読み込み前に高さを確保しておかないと画像デコード後に通知パネルがガタつく（レイアウトシフト）。
+   保存済みHTMLのインラインstyle（height:auto等）より優先させるため !important で固定する。 */
+.notif-item-body img { display: block; width: 100%; height: 140px !important; object-fit: cover !important; margin: 6px 0 !important; }
+
+/* ---------- 通知パネルのタブ（あなたへ/TFMから、管理コンソールの宛先タブでも共用） ---------- */
+.notif-tabs { display: flex; border-bottom: var(--border); }
+.notif-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-4);
+}
+.notif-tab.is-active { color: var(--black); border-bottom-color: var(--black); }
+.notif-tab:hover { color: var(--black); }
 
 /* ---------- モーダル ---------- */
 .modal-overlay {
@@ -1274,6 +1319,46 @@ button { font-family: inherit; cursor: pointer; }
 }
 .order-summary li { padding: 4px 0; }
 .order-total { text-align: center; font-size: 15px; font-weight: 900; margin-top: 16px; }
+.order-number { text-align: center; font-size: 13px; color: var(--gray-4); margin-top: 12px; }
+.entry-code {
+  text-align: center;
+  max-width: 320px;
+  margin: 20px auto 0;
+  padding: 16px 20px;
+  background: var(--gray-1);
+  border: var(--border);
+  font-size: 13px;
+}
+.entry-code strong { display: inline-block; font-size: 22px; letter-spacing: 0.06em; margin: 6px 0; }
+.entry-code span { display: block; font-size: 11.5px; color: var(--gray-4); }
+.entry-code--inline { max-width: none; margin: 12px 0 0; text-align: left; }
+.section-invert .entry-code--inline { background: var(--gray-5); border-color: var(--gray-4); }
+
+/* ---------- マイページ（members.html） ---------- */
+.mypage-greeting { padding-bottom: 40px; }
+.mypage-greeting #myGreeting { margin-bottom: 20px; }
+.mypage-section .section-title { margin-bottom: 32px; }
+.mypage-cards { display: flex; flex-direction: column; gap: 16px; max-width: 640px; margin: 0 auto; text-align: left; }
+.mypage-card { border: var(--border); padding: 20px; background: var(--white); color: var(--black); }
+.section-invert .mypage-card { background: var(--gray-5); border-color: var(--gray-4); color: var(--white); }
+.mypage-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.mypage-card-head h3 { font-size: 14px; }
+.mypage-card-date { font-size: 11.5px; color: var(--gray-4); white-space: nowrap; }
+.mypage-card-status { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 3px 10px; border: 1px solid currentColor; }
+.mypage-card-status.is-paid { color: var(--black); }
+.section-invert .mypage-card-status.is-paid { color: var(--white); }
+.mypage-card-status.is-pending { color: var(--gray-4); }
+.mypage-card-status.is-failed { color: #b3261e; }
+.mypage-card .order-summary { max-width: none; margin: 0; padding: 0; border: none; }
+.mypage-order-number { text-align: left; margin: 0 0 10px; }
+.mypage-card-body { font-size: 13px; line-height: 1.7; margin-top: 8px; }
+.mypage-notif { cursor: default; }
+.mypage-notif.is-unread { cursor: pointer; border-color: var(--black); }
+.section-invert .mypage-notif.is-unread { border-color: var(--white); }
+.section-invert .notif-tabs { border-bottom-color: var(--gray-5); max-width: 640px; margin: 0 auto 20px; }
+.section-invert .notif-tab { color: var(--gray-3); }
+.section-invert .notif-tab.is-active { color: var(--white); border-bottom-color: var(--white); }
+.section-invert .notif-tab:hover { color: var(--white); }
 
 /* ---------- 商品カードのカートボタン ---------- */
 .goods-add {
@@ -1422,3 +1507,133 @@ button { font-family: inherit; cursor: pointer; }
   .news-item { gap: 10px; }
   .footer-nav { margin-left: 0; }
 }
+
+/* ==========================================================
+   管理コンソール（admin-announcements.html / #console）
+   ========================================================== */
+.console-jumpnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  padding-bottom: 24px;
+  margin-bottom: 40px;
+  border-bottom: var(--border);
+  font-size: 13px;
+}
+.console-jumpnav a { font-weight: 700; }
+.console-jumpnav a:hover { text-decoration: underline; }
+.console-jumpnav .btn { margin-left: auto; }
+
+.console-section { margin-bottom: 56px; }
+.console-section h2 { font-size: 18px; margin-bottom: 16px; }
+.console-note { font-size: 12.5px; color: var(--gray-4); margin-top: 6px; }
+
+.console-editor {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 40px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .console-editor { grid-template-columns: 1fr; }
+}
+
+.console-form .form-row { margin-bottom: 20px; }
+
+.console-blocks { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+.console-block { border: var(--border); padding: 14px; }
+.console-block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.console-block-type { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--gray-4); }
+.console-block-controls { display: flex; gap: 4px; }
+.console-block-btn {
+  background: var(--white);
+  border: 1px solid var(--gray-3);
+  width: 26px; height: 26px;
+  font-size: 12px;
+  line-height: 1;
+}
+.console-block-btn:hover { border-color: var(--black); }
+.console-block-btn:disabled { opacity: 0.35; cursor: default; }
+.console-block-btn-danger:hover { border-color: #b3261e; color: #b3261e; }
+.console-block-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.console-block-row-inline { font-size: 12px; }
+.console-block-input,
+.console-block-select,
+.console-block-textarea {
+  flex: 1;
+  min-width: 140px;
+  border: 1px solid var(--gray-3);
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.console-block-textarea { width: 100%; resize: vertical; }
+.console-block-hint { font-size: 11.5px; color: var(--gray-4); }
+.console-block-thumb { display: block; width: 160px; height: 100px; object-fit: cover; border: var(--border); }
+.console-block-upload { display: flex; align-items: center; gap: 10px; }
+.console-block-upload-status { font-size: 11.5px; color: var(--gray-4); }
+.console-block-divider-hint { text-align: center; color: var(--gray-3); letter-spacing: 0.2em; }
+
+.console-blocks-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  color: var(--gray-4);
+}
+.btn-chip {
+  background: var(--white);
+  border: 1px solid var(--gray-3);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.btn-chip:hover { border-color: var(--black); color: var(--black); }
+
+.console-preview h3 { font-size: 14px; margin-bottom: 4px; }
+.console-preview-frame { border: var(--border); margin-top: 12px; height: 480px; }
+.console-preview-frame iframe { width: 100%; height: 100%; border: none; }
+
+.console-toggle { border: var(--border); padding: 20px; margin-bottom: 16px; }
+.console-toggle summary { cursor: pointer; list-style: none; }
+.console-toggle summary::-webkit-details-marker { display: none; }
+.console-toggle summary h2 { display: inline; font-size: 16px; }
+.console-count { font-size: 12px; color: var(--gray-4); font-weight: 400; }
+.console-search {
+  width: 100%;
+  border: 1px solid var(--gray-3);
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 14px 0;
+}
+
+.console-cards { display: flex; flex-direction: column; gap: 14px; }
+.cards-empty { font-size: 13px; color: var(--gray-4); text-align: center; padding: 24px 0; }
+.console-card { border: var(--border); padding: 16px; }
+.console-card-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.console-card-head h3 { font-size: 14px; }
+.console-card-date { font-size: 11.5px; color: var(--gray-4); white-space: nowrap; }
+.console-card-body { font-size: 13px; line-height: 1.7; margin-top: 8px; }
+/* notif-item-body と同じ理由（保存済みHTMLのインラインstyleを上書きするため !important）。
+   高さ未確定のまま描画されると、一覧セクションの開閉・検索絞り込みのたびに画像が
+   デコード完了後にガタつくため、先に高さを固定しておく。 */
+.console-card-body img { display: block; width: 100%; height: 220px !important; object-fit: cover !important; margin: 8px 0 !important; }
+.btn-link {
+  background: none;
+  border: none;
+  font-size: 12px;
+  text-decoration: underline;
+  color: var(--gray-4);
+  margin-top: 10px;
+}
+.btn-link:hover { color: var(--black); }
+
+.inquiry-status { display: inline-block; font-size: 11px; font-weight: 700; margin-top: 8px; color: var(--gray-4); }
+.inquiry-replied .inquiry-status { color: var(--black); }
+.inquiry-reply-sent { background: var(--gray-1); padding: 12px; margin-top: 10px; font-size: 13px; }
+.inquiry-reply-label { font-size: 11.5px; color: var(--gray-4); margin-bottom: 4px; }
+.inquiry-reply-form { margin-top: 10px; }
+.inquiry-reply-form summary { cursor: pointer; list-style: none; }
+.inquiry-reply-form summary::-webkit-details-marker { display: none; }

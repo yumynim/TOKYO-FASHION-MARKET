@@ -133,18 +133,6 @@ const UI = {
     });
   },
 
-  // ---------- ログイン済みユーザー向けの簡易アカウントメニュー ----------
-  openAccount(user) {
-    const modal = this.openModal(`
-      <h2 class="modal-title">アカウント</h2>
-      <p class="modal-meta">${user.email || ""}</p>
-      <button type="button" class="btn btn-outline" id="logoutBtn">ログアウト</button>`);
-    modal.querySelector("#logoutBtn").addEventListener("click", async () => {
-      await Auth.signOut();
-      UI.closeModal();
-    });
-  },
-
   // ---------- スクロールリビール ----------
   setupReveal() {
     const targets = document.querySelectorAll(
@@ -204,12 +192,14 @@ const UI = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ログインボタン（layout.jsが注入済み）: ログイン済みならアカウントメニュー、未ログインならログイン画面
+  // ログインボタン（layout.jsが注入済み）: ログイン済みならマイページへ直接移動、未ログインならログイン画面
+  // （以前はアカウントメニューを一度開いてからマイページへ、という二段階だったが、
+  // 「マイページの場所が分かりにくい」という声を受けて一段階で行けるようにした）
   const loginBtn = document.querySelector(".btn-login");
   if (loginBtn) {
     loginBtn.addEventListener("click", async () => {
       const user = await Auth.getUser();
-      if (user) UI.openAccount(user);
+      if (user) window.location.href = "members.html";
       else UI.openLogin();
     });
   }

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════
+  ページ: 管理コンソール（admin-announcements.html、/console でも開ける）
+  ▼ このページで編集する場所
+  ・基本的に編集不要（運営が使う管理画面）。挙動は js/console.js。
+  ・合言葉は Vercel環境変数 ADMIN_CONSOLE_PASSWORD で設定する（Supabaseログインは使わない）。
+
+  ▼ 全ページ共通
+  ・メニュー / フッター → js/layout.js
+  ・色やサイズ → css/style.css（先頭の :root で色を一括変更可）
+  ═══════════════════════════════════════════════════
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <title>お知らせ投稿・お問い合わせ管理 | TOKYO FASHION MARKET</title>
+  <meta name="description" content="TOKYO FASHION MARKET 管理者向けコンソール。">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Oswald:wght@400;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="console">
+  <header class="site-header"></header>
+
+  <main>
+    <div class="page-head">
+      <h1>Console</h1>
+      <p class="page-sub">お知らせ投稿・お問い合わせ管理</p>
+    </div>
+
+    <!-- パスワード未入力／不一致のとき -->
+    <section class="section" id="consoleLocked">
+      <div class="container container-narrow">
+        <p class="section-lead">このページは管理者専用です。管理者パスワードを入力してください。</p>
+        <form id="consoleLoginForm" class="console-form" novalidate>
+          <div class="form-row">
+            <label for="consolePassword">管理者パスワード</label>
+            <input type="password" id="consolePassword" name="password" required autocomplete="current-password">
+          </div>
+          <p class="form-error" id="consoleLoginError" hidden></p>
+          <div class="form-submit">
+            <button type="submit" class="btn btn-solid btn-lg">ログイン</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- パスワードが正しいとき -->
+    <section class="section" id="consoleContent" hidden>
+      <div class="container">
+        <p class="section-lead">ここで投稿すると、会員全員のヘッダー通知アイコン「TFMからのお知らせ」に届き、メールでも送信されます。</p>
+        <div class="console-jumpnav">
+          <a href="#section-new">新しいお知らせ</a>
+          <a href="#section-inquiries">お問い合わせ</a>
+          <a href="#section-pending-orders">決済未完了の注文</a>
+          <a href="#section-list">投稿済み一覧</a>
+          <a href="#section-personal">個人宛て履歴</a>
+          <button type="button" class="btn btn-outline" id="consoleLogoutBtn">ログアウト</button>
+        </div>
+
+        <section class="console-section" id="section-new">
+          <h2>新しいお知らせ</h2>
+          <div class="notif-tabs" id="consoleTargetTabs">
+            <button type="button" class="notif-tab is-active" data-target-mode="all">会員全員に送る</button>
+            <button type="button" class="notif-tab" data-target-mode="one">個人宛てに送る</button>
+            <button type="button" class="notif-tab" data-target-mode="segment">購入者に送る</button>
+            <button type="button" class="notif-tab" data-target-mode="pending">手続き中の人に送る</button>
+          </div>
+          <div class="console-editor">
+            <form id="consoleForm" class="console-form" novalidate>
+              <div class="form-row" id="targetEmailField" hidden>
+                <label for="targetEmail">宛先のメールアドレス</label>
+                <input type="email" id="targetEmail" name="targetEmail" placeholder="member@example.com">
+              </div>
+              <div class="form-row" id="targetSegmentField" hidden>
+                <label for="segmentSelect">対象の商品/チケット</label>
+                <select id="segmentSelect" name="segmentKey"><option value="">読み込み中…</option></select>
+                <p class="console-note">支払いが完了した注文だけが対象です。売れた時点で自動的にここに表示されます。</p>
+              </div>
+              <p class="console-note" id="targetPendingField" hidden>対象: 決済ページまでは進んだが支払いが完了していない会員 <strong id="pendingCount">0</strong>名</p>
+              <div class="form-row">
+                <label for="consoleTitle">タイトル</label>
+                <input type="text" id="consoleTitle" name="title" required maxlength="80" placeholder="例）夏のPOPUP開催のお知らせ">
+                <p class="char-counter" id="consoleTitleCounter">0 / 80</p>
+              </div>
+
+              <div class="console-blocks" id="consoleBlocks"></div>
+
+              <div class="console-blocks-toolbar">
+                <span>ブロックを追加：</span>
+                <button type="button" class="btn-chip" data-add-block="heading">＋ 見出し</button>
+                <button type="button" class="btn-chip" data-add-block="paragraph">＋ 段落</button>
+                <button type="button" class="btn-chip" data-add-block="callout">＋ ハイライト</button>
+                <button type="button" class="btn-chip" data-add-block="image">＋ 画像</button>
+                <button type="button" class="btn-chip" data-add-block="divider">＋ 区切り線</button>
+                <button type="button" class="btn-chip" data-add-block="button">＋ ボタン</button>
+              </div>
+
+              <p class="form-error" id="consoleFormError" hidden></p>
+              <div class="form-submit">
+                <button type="submit" class="btn btn-solid btn-lg">投稿する</button>
+              </div>
+            </form>
+            <div class="console-preview">
+              <h3>プレビュー（実際に届くメールの見た目）</h3>
+              <p class="console-note">入力すると自動で更新されます。</p>
+              <div class="console-preview-frame">
+                <iframe id="previewFrame" title="メールプレビュー" sandbox=""></iframe>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="console-section" id="section-inquiries">
+          <details class="console-toggle" id="detailsInquiries" open>
+            <summary><h2>お問い合わせ <span class="console-count" id="inquiriesCount"></span></h2></summary>
+            <p class="console-note">サイトのお問い合わせフォームから届いた内容です。返信はここから送信してください。</p>
+            <input type="search" class="console-search" id="inquiriesSearch" placeholder="お名前・メールアドレス・本文で検索…">
+            <div id="inquiriesList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
+          </details>
+        </section>
+
+        <section class="console-section" id="section-pending-orders">
+          <details class="console-toggle" id="detailsPendingOrders">
+            <summary><h2>決済未完了の注文 <span class="console-count" id="pendingOrdersCount"></span></h2></summary>
+            <p class="console-note">決済ページまでは進んだものの、支払いが完了しないまま残っている注文です。
+              Square側のテストや離脱などで残り続けることがあります。二度と支払われる見込みが無い場合は削除できます
+              （削除しても、後からSquareの支払い通知が届いた場合は静かに無視されるだけで安全です）。</p>
+            <div id="pendingOrdersList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
+          </details>
+        </section>
+
+        <section class="console-section" id="section-list">
+          <details class="console-toggle" id="detailsList">
+            <summary><h2>投稿済みのお知らせ（全員向け） <span class="console-count" id="listCount"></span></h2></summary>
+            <input type="search" class="console-search" id="listSearch" placeholder="タイトル・本文で検索…">
+            <div id="announcementsList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
+          </details>
+        </section>
+
+        <section class="console-section" id="section-personal">
+          <details class="console-toggle" id="detailsPersonal">
+            <summary><h2>個人宛てに送った履歴 <span class="console-count" id="personalCount"></span></h2></summary>
+            <input type="search" class="console-search" id="personalSearch" placeholder="メールアドレス・タイトル・本文で検索…">
+            <div id="personalList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
+          </details>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer"></footer>
+  <script src="js/layout.js"></script>
+  <script src="js/console.js"></script>
+</body>
+</html>

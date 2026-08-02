@@ -174,9 +174,113 @@ const PAGE_INITS = {
   casting() { setupDemoForm("castingForm", "castingDone"); },
   sample() { setupDemoForm("sampleForm", "sampleDone"); },
 
-  // ---------- ログイン限定ページ（Members） ----------
+  // ---------- ログイン限定ページ（マイページ） ----------
   members() {
     const btn = document.getElementById("membersLoginBtn");
     if (btn) btn.addEventListener("click", () => UI.openLogin());
+
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const ORDER_STATUS_LABEL = { pending: "手続き中", paid: "支払い済み", failed: "失敗" };
+
+    const ordersEl = document.getElementById("myOrders");
+    const notifEl = document.getElementById("myNotifications");
+    const notifTabs = document.querySelectorAll("[data-my-notif-tab]");
+    let myNotifTab = "personal";
+
+    function renderMyOrders(orders) {
+      if (!ordersEl) return;
+      if (!orders.length) {
+        ordersEl.innerHTML = '<p class="cards-empty">まだ購入履歴はありません。</p>';
+        return;
+      }
+      ordersEl.innerHTML = orders.map((o) => {
+        const items = Array.isArray(o.line_items) ? o.line_items : [];
+        const rows = items.map((i) => `<li>${esc(i.name)} × ${i.quantity} … ￥${Number(i.amount).toLocaleString("ja-JP")}</li>`).join("");
+        return `
+        <div class="mypage-card">
+          <div class="mypage-card-head">
+            <span class="mypage-card-status is-${esc(o.status)}">${esc(ORDER_STATUS_LABEL[o.status] || o.status)}</span>
+            <span class="mypage-card-date">${new Date(o.created_at).toLocaleString("ja-JP")}</span>
+          </div>
+          ${o.order_number ? `<p class="order-number mypage-order-number">ご注文番号: ${esc(o.order_number)}</p>` : ""}
+          <ul class="order-summary">${rows}</ul>
+          <p class="order-total">合計　￥${Number(o.amount_total || 0).toLocaleString("ja-JP")}（税込）</p>
+          ${o.entry_code ? `<p class="entry-code entry-code--inline">当日の受付コード<br><strong>${esc(o.entry_code)}</strong></p>` : ""}
+        </div>`;
+      }).join("");
+    }
+
+    function loadMyOrders() {
+      if (!ordersEl) return;
+      Auth.getSession().then((session) => {
+        if (!session) return;
+        fetch("/api/my-orders", { headers: { Authorization: "Bearer " + session.access_token } })
+          .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+          .then(({ ok, data }) => {
+            if (!ok) { ordersEl.innerHTML = '<p class="cards-empty">読み込みに失敗しました。</p>'; return; }
+            renderMyOrders(data.orders || []);
+          })
+          .catch(() => { ordersEl.innerHTML = '<p class="cards-empty">通信エラーが発生しました。</p>'; });
+      });
+    }
+
+    // 通知の取得・既読化は js/notifications.js の Notifications オブジェクトをそのまま使う
+    // （ヘッダーの通知ベルと同じキャッシュ・同じAPI呼び出しを再利用し、二重実装を避ける）
+    function renderMyNotifications() {
+      if (!notifEl) return;
+      const list = myNotifTab === "broadcast" ? Notifications._broadcast : Notifications._list;
+      if (!list.length) {
+        notifEl.innerHTML = `<p class="cards-empty">${myNotifTab === "broadcast" ? "お知らせはまだありません。" : "通知はまだありません。"}</p>`;
+        return;
+      }
+      notifEl.innerHTML = list.map((n) => {
+        const body = n.body_html || (n.body ? `<p>${esc(n.body)}</p>` : "");
+        const unread = myNotifTab === "personal" && !n.is_read;
+        return `
+        <div class="mypage-card mypage-notif${unread ? " is-unread" : ""}" data-id="${n.id}">
+          <div class="mypage-card-head">
+            <h3>${esc(n.title)}</h3>
+            <span class="mypage-card-date">${new Date(n.created_at).toLocaleString("ja-JP")}</span>
+          </div>
+          <div class="mypage-card-body">${body}</div>
+        </div>`;
+      }).join("");
+
+      if (myNotifTab === "personal") {
+        notifEl.querySelectorAll(".mypage-notif.is-unread").forEach((el) => {
+          el.addEventListener("click", () => {
+            Notifications.markRead(el.dataset.id).then(renderMyNotifications);
+          });
+        });
+      }
+    }
+
+    function loadMyNotifications() {
+      if (!notifEl) return;
+      Notifications.refresh().then(renderMyNotifications);
+    }
+
+    notifTabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        myNotifTab = btn.getAttribute("data-my-notif-tab");
+        notifTabs.forEach((b) => b.classList.toggle("is-active", b === btn));
+        renderMyNotifications();
+      });
+    });
+
+    const greetingEl = document.getElementById("myGreeting");
+    const logoutBtn = document.getElementById("myLogoutBtn");
+    if (logoutBtn) logoutBtn.addEventListener("click", () => Auth.signOut());
+
+    async function loadMypageIfLoggedIn() {
+      const user = await Auth.getUser();
+      if (!user) return;
+      if (greetingEl) greetingEl.textContent = `${user.email || "ゲスト"} さん、こんにちは。`;
+      loadMyOrders();
+      loadMyNotifications();
+    }
+
+    loadMypageIfLoggedIn();
+    Auth.onChange(() => loadMypageIfLoggedIn());
   },
 };

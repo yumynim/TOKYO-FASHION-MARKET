@@ -1,15 +1,24 @@
 // ==========================================================
-// Notifications — アプリ内通知（購入確認など）
+// Notifications — アプリ内通知（購入確認など／運営からのお知らせ）
 // ==========================================================
-// 通知の作成はサーバー側（api/webhooks/square.js、service_role）のみが行う。
-// このファイルは「ログイン中の本人の通知を読む・既読にする」だけを行う
-// （notifications テーブルのRLSポリシーにより、本人の行しか見えない・変更できない）。
+// 「あなたへのお知らせ」（notifications テーブル、本人専用）と
+// 「TFMからのお知らせ」（announcements テーブル、会員全員向け。/console から配信）の
+// 2タブをヘッダーの通知パネルで切り替えて表示する。
+//
+// notifications の作成はサーバー側（api/webhooks/square.js・api/admin-announcements.js、
+// いずれもservice_role）のみが行う。announcements も同様に api/admin-announcements.js
+// （service_role）経由でのみ作成される。このファイルは「読む・既読にする」だけを行う
+// （notificationsはRLSにより本人の行しか見えない・変更できない。announcementsはログイン中の
+// 会員なら誰でも読める代わりに、個別の既読状態を持たない）。
 //
 // js/config.js が未設定（Auth.client が null）の間は、ベルアイコンごと非表示のままにする。
 
 const Notifications = {
   _list: [],
+  _broadcast: [],
   _panelOpen: false,
+  _activeTab: "personal", // 'personal' | 'broadcast'
+  _lastSeenKey: "tfm_announcements_last_seen",
 
   esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -29,26 +38,41 @@ const Notifications = {
     if (!user) {
       wrap.hidden = true;
       this._list = [];
+      this._broadcast = [];
       this.closePanel();
       return;
     }
 
     wrap.hidden = false;
 
-    const { data, error } = await Auth.client
-      .from("notifications")
-      .select("id, type, title, body, is_read, created_at")
-      .order("created_at", { ascending: false })
-      .limit(20);
+    const [personalRes, broadcastRes] = await Promise.all([
+      Auth.client
+        .from("notifications")
+        .select("id, type, title, body, body_html, is_read, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20),
+      Auth.client
+        .from("announcements")
+        .select("id, title, body, body_html, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
 
-    if (error) {
-      console.error("notifications: 取得に失敗しました", error);
-      return;
-    }
+    if (personalRes.error) console.error("notifications: 取得に失敗しました", personalRes.error);
+    if (broadcastRes.error) console.error("announcements: 取得に失敗しました", broadcastRes.error);
 
-    this._list = data || [];
+    this._list = personalRes.data || [];
+    this._broadcast = broadcastRes.data || [];
     this.renderBadge();
     if (this._panelOpen) this.renderPanel();
+  },
+
+  // announcementsは既読/未読の概念が無いため、最後にパネルを開いた時刻より
+  // 新しいものがあるかどうかをlocalStorageで簡易的に判定する
+  hasNewBroadcast() {
+    if (!this._broadcast.length) return false;
+    const lastSeen = Number(localStorage.getItem(this._lastSeenKey) || 0);
+    return this._broadcast.some((n) => new Date(n.created_at).getTime() > lastSeen);
   },
 
   renderBadge() {
@@ -57,6 +81,9 @@ const Notifications = {
     const unread = this._list.filter((n) => !n.is_read).length;
     if (unread > 0) {
       badge.textContent = unread > 99 ? "99+" : String(unread);
+      badge.hidden = false;
+    } else if (this.hasNewBroadcast()) {
+      badge.textContent = "";
       badge.hidden = false;
     } else {
       badge.hidden = true;
@@ -67,27 +94,41 @@ const Notifications = {
     const panel = document.getElementById("notifPanel");
     if (!panel) return;
 
-    if (!this._list.length) {
-      panel.innerHTML = `<p class="notif-empty">通知はまだありません。</p>`;
-      return;
-    }
-
-    const items = this._list
-      .map(
-        (n) => `
-        <li class="notif-item${n.is_read ? "" : " is-unread"}" data-id="${n.id}">
+    const list = this._activeTab === "broadcast" ? this._broadcast : this._list;
+    const items = !list.length
+      ? `<p class="notif-empty">${this._activeTab === "broadcast" ? "お知らせはまだありません。" : "通知はまだありません。"}</p>`
+      : `<ul class="notif-list">${list
+          .map((n) => {
+            const bodyInner = n.body_html || (n.body ? `<p>${this.esc(n.body)}</p>` : "");
+            const body = bodyInner ? `<div class="notif-item-body">${bodyInner}</div>` : "";
+            const unreadClass = this._activeTab === "personal" && !n.is_read ? " is-unread" : "";
+            return `
+        <li class="notif-item${unreadClass}" data-id="${n.id}">
           <p class="notif-item-title">${this.esc(n.title)}</p>
-          ${n.body ? `<p class="notif-item-body">${this.esc(n.body)}</p>` : ""}
-        </li>`
-      )
-      .join("");
+          ${body}
+        </li>`;
+          })
+          .join("")}</ul>`;
 
     panel.innerHTML = `
-      <div class="notif-panel-head">
-        <span>通知</span>
-        <button type="button" class="notif-mark-all" id="notifMarkAll">すべて既読にする</button>
+      <div class="notif-tabs">
+        <button type="button" class="notif-tab${this._activeTab === "personal" ? " is-active" : ""}" data-notif-tab="personal">あなたへのお知らせ</button>
+        <button type="button" class="notif-tab${this._activeTab === "broadcast" ? " is-active" : ""}" data-notif-tab="broadcast">TFMからのお知らせ</button>
       </div>
-      <ul class="notif-list">${items}</ul>`;
+      <div class="notif-panel-head">
+        <span>${this._activeTab === "broadcast" ? "TFMからのお知らせ" : "通知"}</span>
+        ${this._activeTab === "personal" ? '<button type="button" class="notif-mark-all" id="notifMarkAll">すべて既読にする</button>' : ""}
+      </div>
+      ${items}`;
+
+    panel.querySelectorAll("[data-notif-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this._activeTab = btn.getAttribute("data-notif-tab");
+        if (this._activeTab === "broadcast") localStorage.setItem(this._lastSeenKey, String(Date.now()));
+        this.renderBadge();
+        this.renderPanel();
+      });
+    });
 
     const markAllBtn = panel.querySelector("#notifMarkAll");
     if (markAllBtn) markAllBtn.addEventListener("click", () => this.markAllRead());
@@ -159,7 +200,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("click", (e) => {
     const wrap = document.getElementById("notifWrap");
-    if (wrap && Notifications._panelOpen && !wrap.contains(e.target)) Notifications.closePanel();
+    if (!wrap || !Notifications._panelOpen) return;
+    // タブ切り替え（renderPanel）はクリックイベント自身の中でパネルの中身を丸ごと
+    // 作り直すため、クリックされたボタン自身がこの時点でDOMから外れている。
+    // wrap.contains(e.target) だと「切り離された要素」を外側クリックと誤判定して
+    // パネルが閉じてしまう（タブ切替のたびに一瞬パネルが消える/ガタつく原因だった）。
+    // composedPath() はイベント発火時点の経路をスナップショットとして保持するため、
+    // 後からDOMが差し替わっても正しく「パネル内のクリックか」を判定できる。
+    if (!e.composedPath().includes(wrap)) Notifications.closePanel();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") Notifications.closePanel();

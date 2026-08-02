@@ -11,3 +11,6 @@ node_modules/
 # 元素材（作業用・任意）
 資料/.DS_Store
 **/.DS_Store
+
+# Claude Code のローカル設定（個人環境用）
+.claude/

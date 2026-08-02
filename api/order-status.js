@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
   const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select("status, line_items, amount_total")
+    .select("status, line_items, amount_total, order_number, entry_code")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -55,5 +55,7 @@ module.exports = async (req, res) => {
     status: data.status,
     lineItems: data.line_items,
     amountTotal: data.amount_total,
+    orderNumber: data.order_number,
+    entryCode: data.entry_code,
   });
 };

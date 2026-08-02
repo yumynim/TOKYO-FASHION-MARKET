@@ -67,12 +67,15 @@ const Auth = {
   },
 
   // ---------- ヘッダーの「ログイン」ボタンをログイン状態に応じて更新 ----------
+  // ログイン中は常に「マイページ」表記にする（以前はメールアドレスの@より前を表示していたが、
+  // 「押した先が何か分かりにくい」という声を受けて、押した先（members.html）が
+  // そのまま名前になるよう統一した）
   async refreshHeaderUI() {
     const btn = document.querySelector(".btn-login");
     if (!btn) return;
     const user = await this.getUser();
     if (user) {
-      btn.textContent = user.email ? user.email.split("@")[0] : "マイページ";
+      btn.textContent = "マイページ";
       btn.classList.add("is-logged-in");
     } else {
       btn.textContent = "ログイン";
@@ -95,11 +98,23 @@ const Auth = {
   // ---------- ログイン必須ページ／セクションの表示切り替え ----------
   // 使い方: 会員限定の中身を `[data-auth-gate]` で囲み、
   // 未ログイン時の案内を `[data-auth-gate-locked]` で用意しておく（どちらもHTML側は hidden 属性つき）。
+  // 任意で `[data-auth-gate-unconfigured]` を用意すると、js/config.js が未設定（Auth.client が null）の間だけ
+  // 「ログインしてください」ではなく「準備中です」という別メッセージを出せる
+  // （設定不備と未ログインを取り違えさせないため。用意しなければ今まで通り locked 側が表示される）。
   // ログイン状態が変わるたびに呼び直すことで表示を追従させる（onChangeから呼ばれる）。
   async gateContent() {
     const content = document.querySelector("[data-auth-gate]");
     const locked = document.querySelector("[data-auth-gate-locked]");
-    if (!content && !locked) return;
+    const unconfigured = document.querySelector("[data-auth-gate-unconfigured]");
+    if (!content && !locked && !unconfigured) return;
+
+    if (!this.client) {
+      if (content) content.hidden = true;
+      if (locked) locked.hidden = !!unconfigured; // unconfigured側が無ければ従来通りlocked側を表示
+      if (unconfigured) unconfigured.hidden = false;
+      return;
+    }
+    if (unconfigured) unconfigured.hidden = true;
 
     const user = await this.getUser();
     if (content) content.hidden = !user;

@@ -68,6 +68,9 @@ Square（決済リンク作成）/ Vercel（ホスティング + Serverless Func
   必ずサーバー側カタログ（`api/_catalog.js`）から価格を取得する（改ざん対策）
 - **`/api/checkout` は Supabase アクセストークンをサーバー側で毎回再検証する**
   （フロントのログイン確認だけを信用しない設計を崩さない）
+- **決済への新しい入口を作る場合は、必ず未ログインならログインを要求する作りにする**
+  （チケット購入・カート決済のいずれも `Auth.getSession()` が無ければ決済に進ませない。
+  `js/store.js` 冒頭のコメント参照。ユーザー要望により恒久ルール化）
 - **注文確定・購入確認メールは Square Webhook（`api/webhooks/square.js`）経由でのみ行う**。
   `checkout-complete.html` の表示だけで「支払い完了」と判断しない（URLを直接開いても表示されてしまうため）。
   `/api/order-status` のポーリング結果（Supabase `orders` テーブルの `status`）を正とする

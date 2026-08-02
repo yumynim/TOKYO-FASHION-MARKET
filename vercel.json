@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/console", "destination": "/admin-announcements.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

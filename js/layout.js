@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "news.html", label: "ニュース" },
   { href: "tokushoho.html", label: "特定商取引" },
   { href: "volunteer.html", label: "ボランティアスタッフ" },
+  { href: "members.html", label: "マイページ" },
 ];
 
 // 「その他」ドロップダウンは一旦廃止（2026-07-29）。

@@ -2,6 +2,11 @@
 // ストア機能 — カート / 商品モーダル / チケットモーダル
 // 決済はSquareの決済ページ（Payment Link）へ遷移して行う。
 // カート内容は localStorage に保存。決済にはログインが必須。
+//
+// ★ 決済への入口を新設する場合は、必ずこのファイルの checkout()（カート）／
+// openTicket()の購入ボタン（チケット）のように、実際に決済に進む前に
+// Auth.getSession()が無ければログインを要求する作りにすること。
+// 「未ログインのまま決済できてしまう経路を作らない」がこのサイトの恒久ルール。
 // ==========================================================
 
 const Store = {
@@ -56,6 +61,15 @@ const Store = {
     badge.hidden = n === 0;
   },
 
+  // 未ログインの場合、ボタンを押す前から「ログインが必要」と分かるようにする
+  // （チケットの購入モーダルと同じ考え方。購入不可の仕様自体は変えない）
+  async updateCheckoutLabel() {
+    const btn = document.getElementById("cartCheckout");
+    if (!btn) return;
+    const user = await Auth.getUser();
+    btn.textContent = user ? "ご購入手続きへ" : "ログインしてご購入手続きへ";
+  },
+
   // ---------- ドロワー ----------
   setupDrawer() {
     const drawer = document.createElement("aside");
@@ -84,6 +98,8 @@ const Store = {
 
     this.renderDrawer();
     this.updateBadge();
+    this.updateCheckoutLabel();
+    Auth.onChange(() => this.updateCheckoutLabel());
 
     // Googleログインの画面遷移から戻ってきた直後は、続きから決済を再開する
     if (localStorage.getItem(this.PENDING_KEY) === "1") {
@@ -259,7 +275,20 @@ const Store = {
       <p class="modal-meta">合計: <strong id="tTotal">￥${price.toLocaleString("ja-JP")}</strong>（税込）</p>
       <button type="button" class="btn btn-solid" id="tBuy">購入する</button>
       <p class="modal-note" id="ticketError" hidden></p>
+      <p class="modal-note" id="ticketLoginNote" hidden>※ ご購入にはログインが必要です</p>
       <p class="modal-note">※ 支払方法: クレジットカード / コンビニ払い / QRコード決済</p>`);
+
+    // 未ログインの場合、押した瞬間に初めてログインを求めるのではなく、
+    // ボタンの文言・注意書きで最初からログインが必要なことが分かるようにする
+    // （購入できない仕様自体は変えず、分かりやすさだけ改善する）
+    const buyBtn = modal.querySelector("#tBuy");
+    const loginNote = modal.querySelector("#ticketLoginNote");
+    Auth.getUser().then((user) => {
+      if (!user) {
+        buyBtn.textContent = "ログインして購入する";
+        loginNote.hidden = false;
+      }
+    });
 
     const qtyEl = modal.querySelector("#tQty");
     const totalEl = modal.querySelector("#tTotal");

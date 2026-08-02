@@ -48,15 +48,50 @@ function isValidSignature(rawBody, signatureHeader, notificationUrl, signatureKe
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// 当日の入場受付コード。「TFM-支払い確定日-ランダム4文字」の形式（例: TFM-20260802-7K4M）。
+// 見間違い・聞き見間違いしやすい文字（0/O, 1/I/L, U/V等）を除いた文字セットから選ぶ。
+// order_number（注文作成時に発行、問い合わせ用）とは別物 —
+// こちらは支払いが確定した時点で、チケットを含む注文にだけ発行する。
+const ENTRY_CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTWXYZ";
+function generateEntryCode() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  let suffix = "";
+  for (let i = 0; i < 4; i++) suffix += ENTRY_CODE_CHARS[crypto.randomInt(ENTRY_CODE_CHARS.length)];
+  return `TFM-${y}${m}${d}-${suffix}`;
+}
+
+// orders.entry_code はユニーク制約があるため、衝突したら別の値で数回だけ再試行する
+// （1日あたりランダム部分だけで約70万通りあるため、実際に衝突することはほぼ無い）。
+async function assignEntryCode(supabaseAdmin, orderId) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateEntryCode();
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .update({ entry_code: code })
+      .eq("id", orderId)
+      .select("entry_code")
+      .single();
+    if (!error) return data.entry_code;
+    if (error.code !== "23505") { console.error("entry_code assign failed:", error.message); return null; }
+  }
+  console.error("entry_code assign failed: 衝突が続いたため断念しました orderId=", orderId);
+  return null;
+}
+
 // アプリ内通知（notifications テーブル）用の本文組み立て
-function buildOrderNotification(lineItems, amountTotal) {
+function buildOrderNotification(lineItems, amountTotal, orderNumber, entryCode) {
   const items = Array.isArray(lineItems) ? lineItems : [];
   const total = `￥${Number(amountTotal).toLocaleString("ja-JP")}`;
   const body =
     items.length <= 1
       ? `${(items[0] && items[0].name) || "ご注文"}（合計 ${total}）のお支払いが完了しました。`
       : `${items[0].name} ほか${items.length - 1}点（合計 ${total}）のお支払いが完了しました。`;
-  return { title: "ご購入ありがとうございました", body };
+  const withOrderNumber = orderNumber ? `${body}\nご注文番号: ${orderNumber}` : body;
+  const withEntryCode = entryCode ? `${withOrderNumber}\n当日の受付コード: ${entryCode}` : withOrderNumber;
+  return { title: "ご購入ありがとうございました", body: withEntryCode };
 }
 
 module.exports = async (req, res) => {
@@ -131,10 +166,20 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // チケットを含む注文にだけ、当日の入場受付コードを発行する（グッズのみの注文には不要）。
+  // この処理自体が「status='pending'→'paid' の更新が成功した時だけ」実行されるブロック内にあるため、
+  // Webhookの重複配信があってもentry_codeが上書き・再発行されることはない
+  // （2回目以降は`updated`がnullになりここまで到達しない）。
+  const items = Array.isArray(updated.line_items) ? updated.line_items : [];
+  const hasTicket = items.some((i) => i.type === "ticket");
+  const entryCode = hasTicket ? await assignEntryCode(supabaseAdmin, updated.id) : null;
+
   const result = await sendOrderConfirmationEmail({
     to: updated.buyer_email,
     lineItems: updated.line_items,
     amountTotal: updated.amount_total,
+    orderNumber: updated.order_number,
+    entryCode,
   });
   if (result && result.ok === false) {
     // メール送信に失敗しても決済確定自体は成功しているので200を返す（Squareの再送対象にはしない）。
@@ -144,7 +189,7 @@ module.exports = async (req, res) => {
   // アプリ内通知を1件作成（失敗してもメールと同様に決済確定自体は成功扱いのまま続行）。
   // この insert 自体が「status='pending'→'paid' の更新が成功した時だけ」実行される上のブロック内にあるため、
   // Webhookの重複配信があっても通知が二重に作られることはない。
-  const notif = buildOrderNotification(updated.line_items, updated.amount_total);
+  const notif = buildOrderNotification(updated.line_items, updated.amount_total, updated.order_number, entryCode);
   const { error: notifError } = await supabaseAdmin.from("notifications").insert({
     user_id: updated.user_id,
     type: "order_paid",

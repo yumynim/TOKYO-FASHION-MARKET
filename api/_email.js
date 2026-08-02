@@ -22,7 +22,7 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-async function sendOrderConfirmationEmail({ to, lineItems, amountTotal }) {
+async function sendOrderConfirmationEmail({ to, lineItems, amountTotal, orderNumber, entryCode }) {
   if (!process.env.RESEND_API_KEY || !FROM_EMAIL) {
     console.error("email: RESEND_API_KEY / RESEND_FROM_EMAIL が未設定のため送信をスキップしました");
     return { skipped: true };
@@ -51,6 +51,8 @@ async function sendOrderConfirmationEmail({ to, lineItems, amountTotal }) {
     <div style="font-family:sans-serif;color:#111;max-width:480px;margin:0 auto;">
       <h1 style="font-size:18px;">ご購入ありがとうございました</h1>
       <p style="font-size:14px;line-height:1.6;">TOKYO FASHION MARKET をご利用いただきありがとうございます。<br>以下の内容でお支払いが完了しました。</p>
+      ${orderNumber ? `<p style="font-size:13px;color:#444;">ご注文番号: <strong>${esc(orderNumber)}</strong>（お問い合わせの際にお伝えください）</p>` : ""}
+      ${entryCode ? `<p style="font-size:15px;color:#111;background:#f5f5f5;padding:10px 14px;border-radius:4px;">当日の受付コード: <strong>${esc(entryCode)}</strong><br><span style="font-size:12px;color:#666;">当日、受付でスタッフにお伝えください。</span></p>` : ""}
       <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;">
         <thead>
           <tr><th style="text-align:left;padding:4px 8px;border-bottom:2px solid #111;">商品</th>

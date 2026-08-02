@@ -23,8 +23,10 @@ function renderPaid(box, data) {
     .join("");
   box.innerHTML = `
     <p class="section-lead">お支払いが確認できました。ご購入内容の確認メールをお送りしております。届いていない場合は迷惑メールフォルダもご確認ください。</p>
+    ${data.orderNumber ? `<p class="order-number">ご注文番号: <strong>${escHtml(data.orderNumber)}</strong>（お問い合わせの際にお伝えください）</p>` : ""}
     <ul class="order-summary">${rows}</ul>
-    <p class="order-total">合計　￥${Number(data.amountTotal || 0).toLocaleString("ja-JP")}（税込）</p>`;
+    <p class="order-total">合計　￥${Number(data.amountTotal || 0).toLocaleString("ja-JP")}（税込）</p>
+    ${data.entryCode ? `<p class="entry-code">当日の受付コード<br><strong>${escHtml(data.entryCode)}</strong><br><span>当日、受付でスタッフにお伝えください。</span></p>` : ""}`;
 }
 
 function renderFailed(box) {
