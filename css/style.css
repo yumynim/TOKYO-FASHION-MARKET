@@ -740,15 +740,16 @@ button { font-family: inherit; cursor: pointer; }
     radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 70%, rgba(255,255,255,0.45) 100%),
     linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0.3) 100%);
 }
-.page-head--photo h1,
-.page-head--photo .page-sub { position: relative; z-index: 1; }
+.page-head.page-head--photo h1 { position: relative; z-index: 1; }
+/* 写真の上だとグレー文字が読みにくいため、サブタイトルは写真付きページでは非表示にする */
+.page-head.page-head--photo .page-sub { display: none; }
 /* タイトルの枠（白背景・罫線）を廃止し、文字の背後だけ光暈でにじませて読みやすくする */
-.page-head--photo h1 {
+.page-head.page-head--photo h1 {
   background: none;
   border: none;
   padding: 0;
 }
-.page-head--photo h1::before {
+.page-head.page-head--photo h1::before {
   content: "";
   position: absolute;
   inset: -34% -14%;
@@ -756,7 +757,6 @@ button { font-family: inherit; cursor: pointer; }
   background: radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.45) 45%, rgba(255,255,255,0) 75%);
   pointer-events: none;
 }
-.page-head--photo .page-sub { color: var(--gray-5); }
 @media (max-width: 600px) {
   .page-head--photo { min-height: 36vh; }
 }
