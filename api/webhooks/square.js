@@ -1,13 +1,16 @@
 // ==========================================================
 // POST /api/webhooks/square
 //
-// Squareからの決済確定通知（payment.updated）を受け取り、
+// Squareからの決済結果通知（payment.updated）を受け取り、
 //   1. 署名を検証（なりすまし・改ざん防止。必ず行う）
 //   2. 支払いが完了（status: COMPLETED）していれば、
 //      square_order_id で orders テーブルの該当行を pending → paid に更新
 //   3. 更新できた場合のみ（＝初めて paid にした場合のみ）確認メールとアプリ内通知(notifications)を送信
 //      （Webhookは同じイベントが複数回届くことがあるため、
 //        「status='pending' の行を更新できた時だけ送る」ことで二重送信を防いでいる）
+//   4. 支払いが失敗/キャンセル（status: FAILED / CANCELED）なら pending → failed に更新し、
+//      購入者へ「お支払いが完了しませんでした」の通知・メールを送る
+//   5. 支払い確定/キャンセル時は運営宛て（CONTACT_TO_EMAIL）にも通知メールを送る（見逃し防止）
 //
 // Square Developer Dashboard での設定:
 //   Webhook の Notification URL: {SITE_URL}/api/webhooks/square
@@ -19,11 +22,13 @@
 //   SQUARE_WEBHOOK_SIGNATURE_KEY
 //   SITE_URL（署名検証の対象URLの組み立てに使用。Dashboardの設定と完全一致させること）
 //   RESEND_API_KEY / RESEND_FROM_EMAIL（_email.js 参照）
+//   CONTACT_TO_EMAIL（任意。運営宛ての購入/キャンセル通知メールの宛先）
 // ==========================================================
 
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 const { sendOrderConfirmationEmail } = require("../_email");
+const { sendEmail } = require("../_mailer");
 
 // 署名検証には生のリクエストボディが必須（JSON.parse後の再シリアライズはバイト単位で一致しない）。
 // Vercel の Node.js Functions はこの config でボディの自動パースを止められる。
@@ -31,11 +36,15 @@ module.exports.config = {
   api: { bodyParser: false },
 };
 
+// チャンクをBufferのまま集めてから最後に文字列化する。
+// `data += chunk` のように1チャンクずつ文字列化すると、日本語などのマルチバイト文字が
+// チャンクの境目で分断されたときに文字化けし、署名計算の対象がSquareの送った本文と
+// 変わってしまう（＝正規の通知なのに署名不一致で弾かれ、決済が反映されなくなる）。
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => (data += chunk));
-    req.on("end", () => resolve(data));
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
 }
@@ -46,6 +55,18 @@ function isValidSignature(rawBody, signatureHeader, notificationUrl, signatureKe
   const a = Buffer.from(hmac);
   const b = Buffer.from(signatureHeader);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function escHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// 受付コードのQR画像URL。外部の無料サービス（api.qrserver.com）に生成を任せる
+// （追加のライブラリ・課金なしで済ませるため）。渡すのは受付コードの文字列だけで、
+// 氏名・メールアドレス等の個人情報は含まない。
+// サイト内表示にも使うため、vercel.json の CSP img-src にこのドメインを許可してある。
+function entryCodeQrUrl(code, size) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size || 240}x${size || 240}&data=${encodeURIComponent(code)}`;
 }
 
 // 当日の入場受付コード。「TFM-支払い確定日-ランダム4文字」の形式（例: TFM-20260802-7K4M）。
@@ -94,6 +115,34 @@ function buildOrderNotification(lineItems, amountTotal, orderNumber, entryCode) 
   return { title: "ご購入ありがとうございました", body: withEntryCode };
 }
 
+// 運営宛ての通知メール。お問い合わせと同じ宛先（CONTACT_TO_EMAIL）に送る。
+// 未設定でもエラーにせず静かにスキップする（購入者本人への通知は別途送信済みのため、
+// これが失敗しても決済処理には支障がない）。
+async function notifyAdmin(order, newStatus) {
+  const adminTo = process.env.CONTACT_TO_EMAIL;
+  if (!adminTo) {
+    console.warn("square webhook: CONTACT_TO_EMAIL が未設定のため運営宛て通知はスキップします");
+    return;
+  }
+  const isPaid = newStatus === "paid";
+  const items = Array.isArray(order.line_items) ? order.line_items : [];
+  // 件名に改行が混ざらないようにする（商品名はカタログ由来だが、念のため）
+  const safeName = String((items[0] && items[0].name) || "ご注文").replace(/[\r\n]+/g, " ");
+  const subject = isPaid ? `【購入通知】${safeName}` : `【キャンセル通知】${safeName}`;
+  const lines = [
+    ...items.map((i) => `${i.name} × ${i.quantity} … ￥${Number(i.amount).toLocaleString("ja-JP")}`),
+    `合計: ￥${Number(order.amount_total || 0).toLocaleString("ja-JP")}`,
+    `購入者: ${order.buyer_email || "（不明）"}`,
+    ...(order.order_number ? [`注文番号: ${order.order_number}`] : []),
+    ...(isPaid && order.entry_code ? [`受付コード: ${order.entry_code}`] : []),
+  ];
+  try {
+    await sendEmail({ to: adminTo, subject, text: lines.join("\n") });
+  } catch (e) {
+    console.error("square webhook: 運営宛て通知メールの送信に失敗しました", e);
+  }
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).send("Method Not Allowed");
@@ -129,9 +178,13 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // 支払い完了以外のイベントは受理だけして何もしない（200を返さないとSquareが再送し続ける）
+  // 決済結果イベント以外は受理だけして何もしない（200を返さないとSquareが再送し続ける）。
+  // payment.status: 'COMPLETED'（支払い完了）| 'FAILED' / 'CANCELED'（不成立）| その他（途中経過）
   const payment = event && event.data && event.data.object && event.data.object.payment;
-  if (event.type !== "payment.updated" || !payment || payment.status !== "COMPLETED") {
+  const paymentStatus = payment && payment.status;
+  const newStatus =
+    paymentStatus === "COMPLETED" ? "paid" : paymentStatus === "FAILED" || paymentStatus === "CANCELED" ? "failed" : null;
+  if (event.type !== "payment.updated" || !payment || !newStatus) {
     res.status(200).send("ignored");
     return;
   }
@@ -144,10 +197,14 @@ module.exports = async (req, res) => {
 
   const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-  // pending の行だけを対象に更新 → 既に paid 済みなら0件更新になり、再送でもメールが重複送信されない
+  // pending の行だけを対象に更新 → 既に確定済みなら0件更新になり、再送でもメール・通知が重複しない
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("orders")
-    .update({ status: "paid", square_payment_id: payment.id, paid_at: new Date().toISOString() })
+    .update({
+      status: newStatus,
+      square_payment_id: payment.id,
+      ...(newStatus === "paid" ? { paid_at: new Date().toISOString() } : {}),
+    })
     .eq("square_order_id", squareOrderId)
     .eq("status", "pending")
     .select()
@@ -161,8 +218,43 @@ module.exports = async (req, res) => {
   }
 
   if (!updated) {
-    // 該当行が無い（見つからない注文）か、既にpaid済み（重複通知）のどちらか。後者は正常。
+    // 該当行が無い（見つからない注文）か、既に確定済み（重複通知）のどちらか。後者は正常。
     res.status(200).send("no pending order matched");
+    return;
+  }
+
+  // ---------- 支払い不成立（FAILED / CANCELED） ----------
+  // 購入者に「完了しなかった」ことを通知し、運営にも知らせて終了する。
+  // 以前は完了以外を無視していたため、注文が pending のまま残り購入者にも何も伝わらなかった。
+  if (newStatus === "failed") {
+    const failedItems = Array.isArray(updated.line_items) ? updated.line_items : [];
+    const firstName = (failedItems[0] && failedItems[0].name) || "ご注文";
+    const failedBody =
+      `${firstName}${failedItems.length > 1 ? ` ほか${failedItems.length - 1}点` : ""}のお支払いがキャンセル、` +
+      `または失敗しました。お手数ですが再度お手続きください。` +
+      (updated.order_number ? `\nご注文番号: ${updated.order_number}` : "");
+
+    const { error: failNotifError } = await supabaseAdmin.from("notifications").insert({
+      user_id: updated.user_id,
+      type: "order_failed",
+      title: "お支払いが完了しませんでした",
+      body: failedBody,
+      related_order_id: updated.id,
+    });
+    if (failNotifError) console.error("square webhook: キャンセル通知の作成に失敗しました", failNotifError);
+
+    if (updated.buyer_email) {
+      await sendEmail({
+        to: updated.buyer_email,
+        subject: "お支払いが完了しませんでした",
+        text: failedBody,
+        ctaLabel: "サイトに戻る",
+        ctaUrl: process.env.SITE_URL,
+      });
+    }
+    await notifyAdmin(updated, "failed");
+
+    res.status(200).send("ok (failed)");
     return;
   }
 
@@ -189,17 +281,27 @@ module.exports = async (req, res) => {
   // アプリ内通知を1件作成（失敗してもメールと同様に決済確定自体は成功扱いのまま続行）。
   // この insert 自体が「status='pending'→'paid' の更新が成功した時だけ」実行される上のブロック内にあるため、
   // Webhookの重複配信があっても通知が二重に作られることはない。
+  // 受付コードがある場合は、通知ベル・マイページでQR画像もその場で見られるようにする
+  // （body_html。メールと同じQRを表示する）。
   const notif = buildOrderNotification(updated.line_items, updated.amount_total, updated.order_number, entryCode);
+  const bodyHtml = entryCode
+    ? `<p>${escHtml(notif.body).replace(/\n/g, "<br>")}</p>` +
+      `<img src="${entryCodeQrUrl(entryCode, 140)}" alt="受付QRコード ${escHtml(entryCode)}" width="140" height="140" style="margin-top:8px;">`
+    : null;
   const { error: notifError } = await supabaseAdmin.from("notifications").insert({
     user_id: updated.user_id,
     type: "order_paid",
     title: notif.title,
     body: notif.body,
+    body_html: bodyHtml,
     related_order_id: updated.id,
   });
   if (notifError) {
     console.error("square webhook: 通知の作成に失敗しました。orderId:", updated.id, notifError);
   }
+
+  // 運営にも購入があったことを知らせる（見逃し防止。CONTACT_TO_EMAIL未設定ならスキップ）
+  await notifyAdmin({ ...updated, entry_code: entryCode }, "paid");
 
   res.status(200).send("ok");
 };

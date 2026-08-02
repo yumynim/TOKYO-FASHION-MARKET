@@ -52,7 +52,7 @@ async function sendOrderConfirmationEmail({ to, lineItems, amountTotal, orderNum
       <h1 style="font-size:18px;">ご購入ありがとうございました</h1>
       <p style="font-size:14px;line-height:1.6;">TOKYO FASHION MARKET をご利用いただきありがとうございます。<br>以下の内容でお支払いが完了しました。</p>
       ${orderNumber ? `<p style="font-size:13px;color:#444;">ご注文番号: <strong>${esc(orderNumber)}</strong>（お問い合わせの際にお伝えください）</p>` : ""}
-      ${entryCode ? `<p style="font-size:15px;color:#111;background:#f5f5f5;padding:10px 14px;border-radius:4px;">当日の受付コード: <strong>${esc(entryCode)}</strong><br><span style="font-size:12px;color:#666;">当日、受付でスタッフにお伝えください。</span></p>` : ""}
+      ${entryCode ? `<div style="font-size:15px;color:#111;background:#f5f5f5;padding:14px;border-radius:4px;">当日の受付コード: <strong>${esc(entryCode)}</strong><br><img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${encodeURIComponent(entryCode)}" alt="受付QRコード" width="200" height="200" style="display:block;margin:10px 0;"><span style="font-size:12px;color:#666;">当日、受付でこのQRコードをご提示いただくか、コードをスタッフにお伝えください。</span></div>` : ""}
       <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;">
         <thead>
           <tr><th style="text-align:left;padding:4px 8px;border-bottom:2px solid #111;">商品</th>
