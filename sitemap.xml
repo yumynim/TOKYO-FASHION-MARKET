@@ -1,67 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/</loc>
+    <loc>https://tokyofashionmarket.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/goods.html</loc>
+    <loc>https://tokyofashionmarket.com/goods.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/hagi.html</loc>
+    <loc>https://tokyofashionmarket.com/hagi.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/sponsorship.html</loc>
+    <loc>https://tokyofashionmarket.com/sponsorship.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/event.html</loc>
+    <loc>https://tokyofashionmarket.com/event.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/recruit.html</loc>
+    <loc>https://tokyofashionmarket.com/recruit.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/oubo-form.html</loc>
+    <loc>https://tokyofashionmarket.com/oubo-form.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/volunteer.html</loc>
+    <loc>https://tokyofashionmarket.com/volunteer.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/news.html</loc>
+    <loc>https://tokyofashionmarket.com/news.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/tokushoho.html</loc>
+    <loc>https://tokyofashionmarket.com/tokushoho.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/sdgs.html</loc>
+    <loc>https://tokyofashionmarket.com/sdgs.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/influencer-casting.html</loc>
+    <loc>https://tokyofashionmarket.com/influencer-casting.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tokyo-fashion-market.vercel.app/sample-sale.html</loc>
+    <loc>https://tokyofashionmarket.com/sample-sale.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

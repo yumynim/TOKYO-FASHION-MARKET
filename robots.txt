@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tokyo-fashion-market.vercel.app/sitemap.xml
+Sitemap: https://tokyofashionmarket.com/sitemap.xml
