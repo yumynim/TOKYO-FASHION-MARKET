@@ -102,7 +102,8 @@ module.exports = async function handler(req, res) {
   }
 
   // GETはクエリ文字列、POST/DELETEはJSONボディでトークンを受け取る
-  const token = req.method === "GET" ? req.query.token : (req.body || {}).token;
+  // GETのトークンはヘッダーのみで受け取る（URLの ?token= はアクセスログに残るため受け付けない）
+  const token = req.method === "GET" ? req.headers["x-admin-token"] : (req.body || {}).token;
   if (!verifyAdminToken(token)) {
     res.status(401).json({ error: "認証が切れました。もう一度パスワードを入力してください" });
     return;

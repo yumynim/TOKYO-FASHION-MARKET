@@ -26,7 +26,21 @@ function renderPaid(box, data) {
     ${data.orderNumber ? `<p class="order-number">ご注文番号: <strong>${escHtml(data.orderNumber)}</strong>（お問い合わせの際にお伝えください）</p>` : ""}
     <ul class="order-summary">${rows}</ul>
     <p class="order-total">合計　￥${Number(data.amountTotal || 0).toLocaleString("ja-JP")}（税込）</p>
-    ${data.entryCode ? `<p class="entry-code">当日の受付コード<br><strong>${escHtml(data.entryCode)}</strong><br><span>当日、受付でスタッフにお伝えください。</span></p>` : ""}`;
+    ${renderEntryCodes(data.entryCodes)}`;
+}
+
+// 受付コードは1人1コード（まとめ買いなら人数分）。QR付きの完全版は確認メールと
+// マイページの通知に入っているため、ここではコードの文字列と案内だけを表示する。
+function renderEntryCodes(codes) {
+  const list = Array.isArray(codes) ? codes.filter(Boolean) : [];
+  if (!list.length) return "";
+  const note =
+    list.length > 1
+      ? "コードはお一人につき1つ・1回のみ有効です。ご同行者にはそれぞれのコード（QR）をお渡しください。QRコードは確認メールとマイページでご確認いただけます。"
+      : "当日、受付でQRコード（確認メール・マイページに記載）をご提示いただくか、コードをスタッフにお伝えください。";
+  return `<p class="entry-code">当日の受付コード<br>${list
+    .map((c, i) => `${list.length > 1 ? `${i + 1}人目： ` : ""}<strong>${escHtml(c)}</strong>`)
+    .join("<br>")}<br><span>${note}</span></p>`;
 }
 
 function renderFailed(box) {

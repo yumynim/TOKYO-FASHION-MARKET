@@ -40,8 +40,8 @@
 ファッションインフルエンサーが集う、東京のPOPUP・フリーマーケットの公式サイト。
 ビルド不要の静的HTML/CSS/JS（サイト本体）＋ ログイン・決済のみ Vercel Serverless Functions。
 
-- 本番URL（現状は仮ドメイン）: **https://tokyo-fashion-market.vercel.app**
-  独自ドメイン確定時は `README.md`「SEO / 公開ドメインについて」の手順で一括置換が必要
+- 本番URL: **https://tokyofashionmarket.com**（2026-08-04、独自ドメイン接続済み。
+  旧仮ドメイン`https://tokyo-fashion-market.vercel.app`もVercel側で引き続き有効）
 - クライアント向けの仕様確定は `要件確認ヒアリングシート.docx`、素材収集は `指示テンプレート.txt`
 
 ## 使用している主要な技術
@@ -97,6 +97,16 @@ Square（決済リンク作成）/ Vercel（ホスティング + Serverless Func
 - **`api/_email.js` の実送信は `RESEND_SEND_ENABLED=true` の時だけ**。独自ドメインをResendに接続し、
   `RESEND_FROM_EMAIL` を認証済みアドレスに変更するまでは `true` にしない
   （未接続ドメインのアドレスから送るとResend側で失敗する、または意図せず仮の送信元から本番顧客にメールが飛ぶ事故を防ぐため）
+- **受付コードは `entry_passes` テーブルの「1人1コード」方式**（1コード＝1人＝1回入場）。
+  発行・入場・取り消しは必ずDB関数（`issue_entry_passes`/`checkin_pass`/`undo_pass`、行ロック付き）経由で行い、
+  JS側で「読んでから書く」処理に書き換えない（受付複数台・Webhook重複配信での二重処理を防ぐ設計）
+- **メール内のQR画像は `api/_qr.js`（base64直接埋め込み）で生成する**。外部サービス
+  （api.qrserver.com等）のURL参照に戻さない（複数QRを1通に載せると表示が欠落する事故が実際に起きたため）
+- **`/api/admin-members` は必ず 'admin' 権限（`ADMIN_CONSOLE_PASSWORD`側）を要求する**。
+  当日スタッフ用の 'checkin' 権限（`CHECKIN_PASSWORD`）では開けないようにする
+  （氏名・メール・購入履歴・問い合わせ本文が集まる最も秘匿性の高いエンドポイントのため）
+- **管理系APIのGETでトークンをURLクエリで受け取らない**（アクセスログに残るため）。
+  必ず `x-admin-token` ヘッダーで受け渡す
 
 ## セキュリティ上の注意事項
 

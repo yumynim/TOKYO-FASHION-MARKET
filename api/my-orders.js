@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
 
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select("id, status, line_items, amount_total, created_at, paid_at, order_number, entry_code")
+    .select("id, status, line_items, amount_total, created_at, paid_at, order_number")
     .eq("user_id", userData.user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -51,5 +51,30 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(200).json({ orders: data || [] });
+  const orders = data || [];
+
+  // 受付コードは1人1コード（entry_passesテーブル）。注文ごとにまとめて付ける。
+  // 無効化済み（revoked）は除く。連番の数字順に並べる。
+  if (orders.length) {
+    const { data: passes, error: passErr } = await supabaseAdmin
+      .from("entry_passes")
+      .select("order_id, code, checked_in_at")
+      .eq("user_id", userData.user.id)
+      .eq("status", "valid");
+    if (passErr) {
+      console.error("my-orders: 受付コードの取得に失敗しました", passErr);
+    } else {
+      const byOrder = new Map();
+      for (const p of passes || []) {
+        if (!byOrder.has(p.order_id)) byOrder.set(p.order_id, []);
+        byOrder.get(p.order_id).push({ code: p.code, checked_in_at: p.checked_in_at });
+      }
+      for (const list of byOrder.values()) {
+        list.sort((a, b) => a.code.length - b.code.length || a.code.localeCompare(b.code));
+      }
+      for (const o of orders) o.entry_passes = byOrder.get(o.id) || [];
+    }
+  }
+
+  res.status(200).json({ orders });
 };

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════
+  ページ: 当日の入場確認（checkin.html、/checkin でも開ける）
+  ▼ このページで編集する場所
+  ・基本的に編集不要（当日スタッフが使う受付画面）。挙動は js/checkin.js。
+  ・合言葉は Vercel環境変数 ADMIN_CONSOLE_PASSWORD（運営用）または
+    CHECKIN_PASSWORD（当日スタッフ用。/checkinだけ使える）で設定する。
+
+  ▼ 全ページ共通
+  ・メニュー / フッター → js/layout.js
+  ・色やサイズ → css/style.css（先頭の :root で色を一括変更可）
+  ═══════════════════════════════════════════════════
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <title>入場確認 | TOKYO FASHION MARKET</title>
+  <meta name="description" content="TOKYO FASHION MARKET 当日スタッフ向け：受付コードの入場確認ページ。">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Oswald:wght@400;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="checkin">
+  <header class="site-header"></header>
+
+  <main>
+    <div class="page-head">
+      <h1>Check-in</h1>
+      <p class="page-sub">当日の入場確認（スタッフ専用）</p>
+    </div>
+
+    <!-- パスワード未入力／不一致のとき -->
+    <section class="section" id="checkinLocked">
+      <div class="container container-narrow">
+        <p class="section-lead">このページは当日スタッフ専用です。合言葉を入力してください。</p>
+        <form id="checkinLoginForm" class="console-form" novalidate>
+          <div class="form-row">
+            <label for="checkinPassword">合言葉（スタッフ用または管理者用）</label>
+            <input type="password" id="checkinPassword" name="password" required autocomplete="current-password">
+          </div>
+          <p class="form-error" id="checkinLoginError" hidden></p>
+          <div class="form-submit">
+            <button type="submit" class="btn btn-solid btn-lg">ログイン</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- パスワードが正しいとき -->
+    <section class="section" id="checkinContent" hidden>
+      <div class="container container-narrow">
+        <p class="section-lead">受付コードをカメラで読み取るか、下の欄に手入力して確認してください。</p>
+
+        <!-- 受付を開始する前に「今日この端末で入場を通せるか」を知らせる。
+             テスト用に設定した EVENT_DATE を消し忘れていると当日いっさい入場できないため、
+             最初のお客様をスキャンして初めて気づく、という事態を避ける。 -->
+        <p id="checkinGate" class="checkin-gate" hidden></p>
+
+        <section class="checkin-scanner">
+          <video id="checkinVideo" playsinline muted hidden></video>
+          <p id="checkinCameraOff" class="console-note">読み取りを開始するには下のボタンを押してください。</p>
+          <p id="checkinUnsupported" class="console-note" hidden><strong>この端末ではカメラ読み取りが使えません。</strong>iPhone・iPadは（Chromeを入れても）対応していません。下の欄にコードを手入力するか、Android端末をお使いください。</p>
+          <p id="checkinCameraError" class="console-note" hidden>カメラを起動できませんでした。カメラの利用を許可しているか確認してください。手入力でも確認できます。</p>
+          <button type="button" class="btn btn-outline" id="checkinScanBtn">カメラで読み取る</button>
+        </section>
+
+        <form id="checkinManualForm" class="checkin-manual">
+          <div class="form-row">
+            <label for="checkinManualInput">受付コードを入力</label>
+            <input type="text" id="checkinManualInput" placeholder="TFM-0927-1-7K4M" autocomplete="off" autocapitalize="characters">
+          </div>
+          <button type="submit" class="btn btn-solid">確認する</button>
+        </form>
+
+        <section id="checkinResult" class="checkin-result" hidden></section>
+
+        <!-- コードを出せない来場者を、お名前やメールアドレスから探して入場させるための欄。
+             当日いちばん起きやすい「携帯の充電が切れた」「メールが見つからない」への対応用。 -->
+        <section class="console-section">
+          <details class="console-toggle" id="detailsCheckinLookup">
+            <summary><h2>コードが分からない方を探す</h2></summary>
+            <p class="console-note">お名前やメールアドレスの一部を入れて検索し、「未入場」の行の「入場させる」を押してください。まとめ買いの方はコードが人数分並びます（未入場の行ならどれを選んでも構いません。後からご同行者が来て「入場済み」と出た場合も、ここでお名前を検索して残りの未入場コードで入場させられます）。</p>
+            <input type="search" class="console-search" id="checkinLookupInput" placeholder="お名前・メールアドレス・注文番号の一部…">
+            <div id="checkinLookupList" class="console-cards"></div>
+          </details>
+        </section>
+
+        <section class="console-section">
+          <details class="console-toggle" id="detailsCheckinHistory">
+            <summary><h2>チェックイン一覧 <span class="console-count" id="checkinHistoryCount"></span></h2></summary>
+            <p class="console-note">間違えてチェックインしてしまった場合は「取り消す」で元に戻せます。</p>
+            <input type="search" class="console-search" id="checkinHistorySearch" placeholder="コード・メールアドレス・お名前・チケット名で検索…">
+            <div id="checkinHistoryList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
+          </details>
+        </section>
+
+        <div class="form-submit">
+          <button type="button" class="btn btn-outline" id="checkinLogoutBtn">ログアウト</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer"></footer>
+  <script src="js/layout.js"></script>
+  <script src="js/checkin.js"></script>
+</body>
+</html>

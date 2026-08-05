@@ -182,6 +182,21 @@ const PAGE_INITS = {
     const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const ORDER_STATUS_LABEL = { pending: "手続き中", paid: "支払い済み", failed: "失敗" };
 
+    // 受付コードは1人1コード（entry_passes）。まとめ買いなら人数分並べ、入場済みかも表示する。
+    // QR画像そのものは確認メール・通知（body_html）で見られるため、ここでは文字列で示す。
+    function renderEntryPasses(passes) {
+      const list = Array.isArray(passes) ? passes : [];
+      if (!list.length) return "";
+      const rows = list
+        .map(
+          (p, i) =>
+            `${list.length > 1 ? `${i + 1}人目： ` : ""}<strong>${esc(p.code)}</strong>${p.checked_in_at ? '<span class="entry-code-used">（入場済み）</span>' : ""}`
+        )
+        .join("<br>");
+      const note = list.length > 1 ? "<br><span>コードはお一人につき1つ・1回のみ有効です。QRコードは確認メール・通知でご確認いただけます。</span>" : "";
+      return `<p class="entry-code entry-code--inline">当日の受付コード<br>${rows}${note}</p>`;
+    }
+
     const ordersEl = document.getElementById("myOrders");
     const notifEl = document.getElementById("myNotifications");
     const notifTabs = document.querySelectorAll("[data-my-notif-tab]");
@@ -205,7 +220,7 @@ const PAGE_INITS = {
           ${o.order_number ? `<p class="order-number mypage-order-number">ご注文番号: ${esc(o.order_number)}</p>` : ""}
           <ul class="order-summary">${rows}</ul>
           <p class="order-total">合計　￥${Number(o.amount_total || 0).toLocaleString("ja-JP")}（税込）</p>
-          ${o.entry_code ? `<p class="entry-code entry-code--inline">当日の受付コード<br><strong>${esc(o.entry_code)}</strong></p>` : ""}
+          ${renderEntryPasses(o.entry_passes)}
         </div>`;
       }).join("");
     }

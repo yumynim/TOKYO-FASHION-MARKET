@@ -3,6 +3,7 @@
   "private": true,
   "description": "TOKYO FASHION MARKET — サイト本体は静的HTML/CSS/JS。/api 配下のみ Vercel Serverless Functions（Node）として動作します。",
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.8"
+    "@supabase/supabase-js": "^2.110.8",
+    "qr-image": "^3.2.0"
   }
 }

@@ -1693,3 +1693,85 @@ button { font-family: inherit; cursor: pointer; }
 .inquiry-reply-form { margin-top: 10px; }
 .inquiry-reply-form summary { cursor: pointer; list-style: none; }
 .inquiry-reply-form summary::-webkit-details-marker { display: none; }
+
+/* ==========================================================
+   当日の入場確認（checkin.html、/checkin）
+   ========================================================== */
+.checkin-gate {
+  border: var(--border);
+  background: var(--gray-1);
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+.checkin-gate--error { border-color: var(--black); background: var(--white); font-weight: 500; }
+
+.checkin-scanner { margin-bottom: 24px; }
+.checkin-scanner video {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: var(--gray-1);
+  border: var(--border);
+  margin-bottom: 12px;
+}
+
+.checkin-manual { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 24px; }
+.checkin-manual .form-row { flex: 1; margin: 0; }
+.checkin-manual input { text-transform: uppercase; letter-spacing: 0.04em; }
+
+.checkin-result {
+  border: var(--border);
+  padding: 20px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+.checkin-badge {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 10px 24px;
+  margin-bottom: 12px;
+}
+.checkin-badge--ok { background: var(--black); color: var(--white); }
+.checkin-badge--used { background: var(--gray-2); color: var(--black); }
+.checkin-badge--error { border: 2px solid var(--black); color: var(--black); }
+.checkin-badge--pending { background: var(--gray-1); color: var(--gray-4); }
+.checkin-ticket { font-size: 15px; font-weight: 700; margin: 4px 0; }
+.checkin-buyer { font-size: 13px; color: var(--gray-4); margin: 4px 0; }
+.checkin-count { font-size: 13px; margin: 6px 0; }
+.checkin-code {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gray-4);
+  margin-top: 6px;
+  word-break: break-all;
+}
+
+/* マイページの受付コードで「入場済み」を示す注記 */
+.entry-code-used { font-size: 11.5px; color: var(--gray-4); margin-left: 6px; }
+
+/* ---------- /console 会員名簿 ---------- */
+.member-card summary { cursor: pointer; list-style: none; }
+.member-card summary::-webkit-details-marker { display: none; }
+.member-card summary .console-card-head h3 { word-break: break-all; }
+.member-detail { margin-top: 12px; border-top: 1px solid var(--gray-2); padding-top: 12px; font-size: 13px; line-height: 1.8; }
+.member-detail h4 { font-size: 12px; letter-spacing: 0.06em; color: var(--gray-4); margin: 14px 0 6px; }
+.member-detail h4:first-child { margin-top: 0; }
+.member-order { border: 1px solid var(--gray-2); padding: 10px 12px; margin-bottom: 8px; }
+.members-alert { border-color: var(--black); background: var(--gray-1); margin-bottom: 14px; }
+
+/* 受付コードのQR画像だけは、通知・コンソールの「画像を140px/220pxに切り抜く」ルールの
+   対象外にする（QRは1ピクセルでも欠けると読み取れなくなるため、正方形のまま全体を出す） */
+.notif-item-body img[alt^="受付QRコード"],
+.mypage-card-body img[alt^="受付QRコード"],
+.console-card-body img[alt^="受付QRコード"] {
+  width: 140px !important;
+  height: 140px !important;
+  object-fit: contain !important;
+}

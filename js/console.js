@@ -29,10 +29,15 @@
   const listPersonalSearchEl = document.getElementById("personalSearch");
   const pendingOrdersEl = document.getElementById("pendingOrdersList");
   const pendingOrdersCountEl = document.getElementById("pendingOrdersCount");
+  const membersEl = document.getElementById("membersList");
+  const membersCountEl = document.getElementById("membersCount");
+  const membersSearchEl = document.getElementById("membersSearch");
+  const membersAlertEl = document.getElementById("membersAlert");
 
   let allInquiries = [];
   let allAnnouncements = [];
   let allPersonal = [];
+  let allMembers = [];
 
   const targetTabs = document.querySelectorAll("[data-target-mode]");
   const targetEmailField = document.getElementById("targetEmailField");
@@ -75,7 +80,97 @@
     loadList();
     loadInquiries();
     loadPendingOrders();
+    loadMembers();
     fetchPreview();
+  }
+
+  /* ---------- 会員名簿 ----------
+     会員1人ごとに、登録情報・購入履歴（受付コード・入場状況）・配信したお知らせ・
+     お問い合わせをまとめて表示する（/api/admin-members）。
+     「この人に今まで何を送ったか」を1箇所で確認できるようにして、
+     二重案内や連絡漏れを防ぐ。 */
+  const ORDER_STATUS_LABEL = { pending: "手続き中", paid: "支払い済み", failed: "失敗" };
+
+  function memberDetailHtml(m) {
+    const orders = (m.orders || []).map((o) => {
+      const codes = (o.codes || []).map((c) => {
+        const state = c.revoked ? "（無効）" : c.checkedInAt ? `（入場済み ${new Date(c.checkedInAt).toLocaleString("ja-JP")}）` : "（未入場）";
+        return `${esc(c.code)}${state}`;
+      }).join("<br>");
+      return `<div class="member-order">
+        <p><strong>${esc(o.summary || "（内容不明）")}</strong>　￥${Number(o.amountTotal || 0).toLocaleString("ja-JP")}　${esc(ORDER_STATUS_LABEL[o.status] || o.status)}　<span class="console-card-date">${new Date(o.createdAt).toLocaleDateString("ja-JP")}</span></p>
+        ${o.orderNumber ? `<p class="console-card-date">注文番号: ${esc(o.orderNumber)}</p>` : ""}
+        ${codes ? `<p class="console-card-date">受付コード:<br>${codes}</p>` : ""}
+      </div>`;
+    }).join("") || '<p class="cards-empty">購入履歴はありません。</p>';
+
+    const notifs = (m.notifications || []).map((n) =>
+      `<p>・${esc(n.title)} <span class="console-card-date">${new Date(n.createdAt).toLocaleDateString("ja-JP")}　${n.kind === "auto" ? "自動送信" : "手動送信"}　${n.read ? "既読" : "未読"}</span></p>`
+    ).join("") || '<p class="cards-empty">配信したお知らせはありません。</p>';
+
+    const inqs = (m.inquiries || []).map((q) =>
+      `<p>・【${esc(q.reason)}】${esc(String(q.message || "").slice(0, 60))}${String(q.message || "").length > 60 ? "…" : ""} <span class="console-card-date">${new Date(q.createdAt).toLocaleDateString("ja-JP")}　${q.status === "replied" ? "返信済み" : "未返信"}</span></p>`
+    ).join("") || '<p class="cards-empty">お問い合わせはありません。</p>';
+
+    return `
+      <h4>購入履歴</h4>${orders}
+      <h4>配信したお知らせ</h4>${notifs}
+      <h4>お問い合わせ</h4>${inqs}`;
+  }
+
+  function renderMembers(list) {
+    if (!list.length) {
+      membersEl.innerHTML = `<p class="cards-empty">${allMembers.length ? "検索条件に一致する会員がいません。" : "まだ会員はいません。"}</p>`;
+      return;
+    }
+    membersEl.innerHTML = list.map((m) => `
+      <details class="console-card member-card">
+        <summary>
+          <div class="console-card-head">
+            <h3>${m.name ? esc(m.name) + "　" : ""}${esc(m.email)}</h3>
+            <span class="console-card-date">${m.createdAt ? new Date(m.createdAt).toLocaleDateString("ja-JP") + " 登録" : ""}</span>
+          </div>
+          <p class="console-card-date">購入 ${m.paidCount}件 ／ 受付コード ${m.codeCount}枚（入場済み ${m.checkedInCount}）／ お知らせ ${m.notificationCount}件 ／ お問い合わせ ${m.inquiryCount}件${m.emailConfirmed ? "" : " ／ メール未確認"}</p>
+        </summary>
+        <div class="member-detail">${memberDetailHtml(m)}</div>
+      </details>`).join("");
+  }
+
+  function filterMembers() {
+    const q = (membersSearchEl.value || "").trim().toLowerCase();
+    const filtered = !q ? allMembers : allMembers.filter((m) =>
+      (m.name || "").toLowerCase().includes(q) ||
+      (m.email || "").toLowerCase().includes(q) ||
+      (m.orders || []).some((o) => (o.orderNumber || "").toLowerCase().includes(q)));
+    renderMembers(filtered);
+  }
+
+  function renderMembersAlert(paidWithoutCodes) {
+    if (!paidWithoutCodes || !paidWithoutCodes.length) { membersAlertEl.innerHTML = ""; return; }
+    // 「払ったのに受付コードが無い」注文は当日の入場トラブルに直結するので、名簿の一番上で目立たせる
+    membersAlertEl.innerHTML = `
+      <div class="console-card members-alert">
+        <div class="console-card-head"><h3>⚠ 支払い済みなのに受付コードが未発行の注文（${paidWithoutCodes.length}件）</h3></div>
+        <p class="console-note">Webhookの不達やコード発行の失敗が考えられます。このままだと当日ご入場いただけません。README の手動対応手順を確認してください。</p>
+        ${paidWithoutCodes.map((o) => `<p>・${esc(o.email)}　${esc(o.summary)}${o.orderNumber ? `　${esc(o.orderNumber)}` : ""} <span class="console-card-date">${new Date(o.createdAt).toLocaleDateString("ja-JP")}</span></p>`).join("")}
+      </div>`;
+  }
+
+  if (membersSearchEl) membersSearchEl.addEventListener("input", filterMembers);
+
+  function loadMembers() {
+    if (!membersEl) return;
+    fetch("/api/admin-members", { headers: { "x-admin-token": getToken() } })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, status: r.status, data })))
+      .then(({ ok, status, data }) => {
+        if (status === 401) { showLocked(); return; }
+        if (!ok) { membersEl.innerHTML = '<p class="cards-empty">読み込みに失敗しました。</p>'; return; }
+        allMembers = data.members || [];
+        membersCountEl.textContent = allMembers.length ? `(${allMembers.length}名${data.truncated ? "+" : ""})` : "";
+        renderMembersAlert(data.paidWithoutCodes || []);
+        filterMembers();
+      })
+      .catch(() => { membersEl.innerHTML = '<p class="cards-empty">通信エラーが発生しました。</p>'; });
   }
 
   /* ---------- 決済未完了の注文（一覧・削除） ---------- */
@@ -119,7 +214,8 @@
   }
 
   function loadPendingOrders() {
-    fetch("/api/admin-orders?token=" + encodeURIComponent(getToken()))
+    // トークンはURLではなくヘッダーで送る（URLに入れるとサーバーのアクセスログに残ってしまう）
+    fetch("/api/admin-orders", { headers: { "x-admin-token": getToken() } })
       .then((r) => r.json().then((data) => ({ ok: r.ok, status: r.status, data })))
       .then(({ ok, status, data }) => {
         if (status === 401) { showLocked(); return; }
@@ -201,7 +297,7 @@
   }
 
   function loadInquiries() {
-    fetch("/api/admin-inquiries?token=" + encodeURIComponent(getToken()))
+    fetch("/api/admin-inquiries", { headers: { "x-admin-token": getToken() } })
       .then((r) => r.json().then((data) => ({ ok: r.ok, status: r.status, data })))
       .then(({ ok, status, data }) => {
         if (status === 401) { showLocked(); return; }
@@ -242,7 +338,7 @@
   }
 
   function loadList() {
-    fetch("/api/admin-announcements?token=" + encodeURIComponent(getToken()))
+    fetch("/api/admin-announcements", { headers: { "x-admin-token": getToken() } })
       .then((r) => r.json().then((data) => ({ ok: r.ok, status: r.status, data })))
       .then(({ ok, status, data }) => {
         if (status === 401) { showLocked(); return; }
@@ -373,7 +469,7 @@
       return `
         <div class="console-block-row">
           <input type="text" class="console-block-input" data-field="label" maxlength="40" placeholder="ボタンの文言（例：詳しく見る）" value="${esc(b.label || "")}">
-          <input type="url" class="console-block-input" data-field="url" placeholder="https://tokyo-fashion-market.vercel.app/...（空欄ならトップページ）" value="${esc(b.url || "")}">
+          <input type="url" class="console-block-input" data-field="url" placeholder="https://tokyofashionmarket.com/...（空欄ならトップページ）" value="${esc(b.url || "")}">
         </div>`;
     }
     return `<div class="console-block-divider-hint">──────────</div>`;
@@ -551,6 +647,13 @@
         btn.disabled = false;
         btn.textContent = "ログイン";
         if (!ok) { loginError.textContent = data.error || "パスワードが違います"; loginError.hidden = false; return; }
+        // 当日スタッフ用の合言葉（CHECKIN_PASSWORD）では/consoleは開けない。
+        // トークンを保存してしまうと全セクションが401で赤くなるだけなので、ここで案内する。
+        if (data.scope === "checkin") {
+          loginError.textContent = "この合言葉は当日の入場確認（/checkin）専用です。管理者パスワードを入力してください。";
+          loginError.hidden = false;
+          return;
+        }
         setToken(data.token);
         loginForm.reset();
         showContent();

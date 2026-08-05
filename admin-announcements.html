@@ -57,9 +57,11 @@
         <div class="console-jumpnav">
           <a href="#section-new">新しいお知らせ</a>
           <a href="#section-inquiries">お問い合わせ</a>
+          <a href="#section-members">会員名簿</a>
           <a href="#section-pending-orders">決済未完了の注文</a>
           <a href="#section-list">投稿済み一覧</a>
           <a href="#section-personal">個人宛て履歴</a>
+          <a href="checkin.html">入場確認（/checkin）へ</a>
           <button type="button" class="btn btn-outline" id="consoleLogoutBtn">ログアウト</button>
         </div>
 
@@ -122,6 +124,16 @@
             <p class="console-note">サイトのお問い合わせフォームから届いた内容です。返信はここから送信してください。</p>
             <input type="search" class="console-search" id="inquiriesSearch" placeholder="お名前・メールアドレス・本文で検索…">
             <div id="inquiriesList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
+          </details>
+        </section>
+
+        <section class="console-section" id="section-members">
+          <details class="console-toggle" id="detailsMembers">
+            <summary><h2>会員名簿 <span class="console-count" id="membersCount"></span></h2></summary>
+            <p class="console-note">会員1人ごとに、登録情報・購入履歴（受付コード・入場状況）・配信したお知らせ・お問い合わせをまとめて確認できます。</p>
+            <div id="membersAlert"></div>
+            <input type="search" class="console-search" id="membersSearch" placeholder="お名前・メールアドレス・注文番号で検索…">
+            <div id="membersList" class="console-cards"><p class="cards-empty">読み込み中…</p></div>
           </details>
         </section>
 

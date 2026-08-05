@@ -36,6 +36,12 @@ module.exports = async (req, res) => {
     console: {
       ADMIN_CONSOLE_PASSWORD: !!process.env.ADMIN_CONSOLE_PASSWORD,
       CONTACT_TO_EMAIL: !!process.env.CONTACT_TO_EMAIL,
+      ADMIN_TOKEN_SECRET: !!process.env.ADMIN_TOKEN_SECRET,
+    },
+    checkin: {
+      CHECKIN_PASSWORD: !!process.env.CHECKIN_PASSWORD,
+      CURRENT_EVENT_ID: process.env.CURRENT_EVENT_ID || "(未設定)",
+      EVENT_DATE: process.env.EVENT_DATE || "(未設定)",
     },
     site: {
       SITE_URL: process.env.SITE_URL || "(未設定)",

@@ -24,31 +24,12 @@
 // ==========================================================
 const { createClient } = require("@supabase/supabase-js");
 const { sendEmail, SITE_URL, INQUIRY_FROM_EMAIL } = require("./_mailer");
+const { isRateLimited } = require("./_rateLimit");
 
 const MAX_NAME = 80;
 const MAX_EMAIL = 160;
 const MAX_MESSAGE = 4000;
 const MAX_REASON = 40;
-
-// 簡易レート制限。Vercel Functionsはインスタンスが使い回されている間だけ有効な
-// ベストエフォート（完全な防御ではなく、明らかな連投を減らすためのもの）。
-const RATE_WINDOW_MS = 60 * 1000;
-const RATE_MAX = 3;
-const recentByIp = new Map();
-
-function isRateLimited(ip) {
-  if (!ip) return false;
-  const now = Date.now();
-  const hits = (recentByIp.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
-  hits.push(now);
-  recentByIp.set(ip, hits);
-  if (recentByIp.size > 500) {
-    for (const [key, times] of recentByIp) {
-      if (!times.some((t) => now - t < RATE_WINDOW_MS)) recentByIp.delete(key);
-    }
-  }
-  return hits.length > RATE_MAX;
-}
 
 function looksLikeEmail(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -66,8 +47,7 @@ module.exports = async (req, res) => {
   // 相手に対策を教えないよう、エラーではなく成功を装って何もしない。
   if (company) { res.status(200).json({ ok: true }); return; }
 
-  const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim();
-  if (isRateLimited(ip)) {
+  if (isRateLimited("contact", req, { windowMs: 60 * 1000, max: 3 })) {
     res.status(429).json({ error: "送信が集中しています。しばらく時間をおいてから再度お試しください。" });
     return;
   }

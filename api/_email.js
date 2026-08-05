@@ -1,19 +1,24 @@
 // ==========================================================
 // 注文確認メール送信（Resend HTTP APIを直接fetch。SDK不使用）
 //
+// メールの外枠（ヘッダー・フッター付きのモノクロテンプレート）は
+// api/_mailer.js の buildEmailHtml を共用する（お知らせ配信・お問い合わせ返信と
+// 同じ見た目に揃えるため）。送信ゲート（RESEND_SEND_ENABLED等）も共通。
+//
+// 受付コードのQRはその場で生成してbase64で直接埋め込む（api/_qr.js参照）。
+// 外部サービス（api.qrserver.com）から読み込む方式は、複数人分のQRを1通に
+// 載せたとき2人目以降が表示されない事故が起きうるためやめた。
+//
 // 必要な環境変数:
 //   RESEND_API_KEY      … Resendダッシュボードで発行
-//   RESEND_FROM_EMAIL   … 送信元アドレス。★独自ドメインをResendに接続したら、この値だけ
-//                         認証済みドメインのアドレス（例: noreply@example.com）に変更すればよい
-//                         （コード側の変更は不要）
-//   RESEND_SEND_ENABLED … "true" の時だけ実際に送信する本番スイッチ。それ以外（未設定含む）は
-//                         常に送信をスキップする。独自ドメインをResendに接続し、
-//                         RESEND_FROM_EMAILを認証済みアドレスに変更した後、
-//                         最後に "true" にして本番送信を有効化する
-//
+//   RESEND_FROM_EMAIL   … 送信元アドレス（Resendで認証済みのドメインのもの）
+//   RESEND_SEND_ENABLED … "true" の時だけ実際に送信する本番スイッチ
 // 上記のいずれかが未設定/無効の間は静かに送信をスキップする（決済自体は失敗させない。
 // ログにだけ理由を出す＝webhook全体を500で落とすとSquareが再送を繰り返すため）。
 // ==========================================================
+
+const { buildEmailHtml, SITE_URL } = require("./_mailer");
+const { qrDataUri } = require("./_qr");
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
 const SEND_ENABLED = process.env.RESEND_SEND_ENABLED === "true";
@@ -22,14 +27,24 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-async function sendOrderConfirmationEmail({ to, lineItems, amountTotal, orderNumber, entryCode }) {
+function yen(n) {
+  return `￥${Number(n).toLocaleString("ja-JP")}`;
+}
+
+/**
+ * @param {object} params
+ * @param {string}   params.to
+ * @param {Array}    params.lineItems    [{name, quantity, amount}]
+ * @param {number}   params.amountTotal
+ * @param {string}   [params.orderNumber]
+ * @param {string[]} [params.entryCodes] 当日の受付コード（1人1コード。まとめ買いなら人数分）
+ */
+async function sendOrderConfirmationEmail({ to, lineItems, amountTotal, orderNumber, entryCodes }) {
   if (!process.env.RESEND_API_KEY || !FROM_EMAIL) {
     console.error("email: RESEND_API_KEY / RESEND_FROM_EMAIL が未設定のため送信をスキップしました");
     return { skipped: true };
   }
   if (!SEND_ENABLED) {
-    // ドメイン未接続の間の安全策。RESEND_API_KEY/RESEND_FROM_EMAILが設定済みでも、
-    // RESEND_SEND_ENABLED=true にするまでは実際には送信しない。
     console.log("email: RESEND_SEND_ENABLED が true ではないため送信をスキップしました（本番送信は未有効化）。宛先:", to);
     return { skipped: true };
   }
@@ -38,32 +53,69 @@ async function sendOrderConfirmationEmail({ to, lineItems, amountTotal, orderNum
     return { skipped: true };
   }
 
+  const codes = Array.isArray(entryCodes) ? entryCodes.filter(Boolean) : [];
+
   const rows = lineItems
     .map(
       (i) =>
-        `<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;">${esc(i.name)}</td>` +
-        `<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">${i.quantity}</td>` +
-        `<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">￥${Number(i.amount).toLocaleString("ja-JP")}</td></tr>`
+        `<tr><td style="padding:8px; border-bottom:1px solid #e4e4e4;">${esc(i.name)}</td>` +
+        `<td style="padding:8px; border-bottom:1px solid #e4e4e4; text-align:right;">${i.quantity}</td>` +
+        `<td style="padding:8px; border-bottom:1px solid #e4e4e4; text-align:right;">${yen(i.amount)}</td></tr>`
     )
     .join("");
 
-  const html = `
-    <div style="font-family:sans-serif;color:#111;max-width:480px;margin:0 auto;">
-      <h1 style="font-size:18px;">ご購入ありがとうございました</h1>
-      <p style="font-size:14px;line-height:1.6;">TOKYO FASHION MARKET をご利用いただきありがとうございます。<br>以下の内容でお支払いが完了しました。</p>
-      ${orderNumber ? `<p style="font-size:13px;color:#444;">ご注文番号: <strong>${esc(orderNumber)}</strong>（お問い合わせの際にお伝えください）</p>` : ""}
-      ${entryCode ? `<div style="font-size:15px;color:#111;background:#f5f5f5;padding:14px;border-radius:4px;">当日の受付コード: <strong>${esc(entryCode)}</strong><br><img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${encodeURIComponent(entryCode)}" alt="受付QRコード" width="200" height="200" style="display:block;margin:10px 0;"><span style="font-size:12px;color:#666;">当日、受付でこのQRコードをご提示いただくか、コードをスタッフにお伝えください。</span></div>` : ""}
-      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;">
-        <thead>
-          <tr><th style="text-align:left;padding:4px 8px;border-bottom:2px solid #111;">商品</th>
-              <th style="text-align:right;padding:4px 8px;border-bottom:2px solid #111;">数量</th>
-              <th style="text-align:right;padding:4px 8px;border-bottom:2px solid #111;">金額</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p style="font-size:14px;text-align:right;margin-top:12px;">合計　<strong>￥${Number(amountTotal).toLocaleString("ja-JP")}</strong>（税込）</p>
-      <p style="font-size:12px;color:#666;margin-top:24px;">このメールに心当たりがない場合は、恐れ入りますが破棄してください。</p>
-    </div>`;
+  // 受付コード欄。1人1コードなので、まとめ買いのときは「◯人目」のラベルを付けて
+  // 人数分のQRを全部載せる（ご同行者にそれぞれのQRを転送してもらう想定）。
+  const codesHtml = codes.length
+    ? `<div style="background:#f5f5f5; border-left:3px solid #0d0d0d; padding:16px; margin:0 0 20px;">
+        <p style="margin:0 0 8px; font-size:14px; font-weight:700; color:#0d0d0d;">当日の受付コード</p>
+        ${codes.length > 1 ? `<p style="margin:0 0 12px; font-size:13px; color:#3a3a3a;">コードはお一人につき1つ・1回のみ有効です。ご同行者にはそれぞれのコード（QR）をお渡しください。</p>` : ""}
+        ${codes
+          .map(
+            (c, i) =>
+              `${codes.length > 1 ? `<p style="margin:12px 0 4px; font-size:14px; font-weight:700; color:#0d0d0d;">── ${i + 1}人目 ──</p>` : ""}` +
+              `<p style="margin:0 0 6px; font-size:16px; font-weight:700; letter-spacing:0.04em; color:#0d0d0d;">${esc(c)}</p>` +
+              `<img src="${qrDataUri(c, 12)}" alt="受付QRコード ${esc(c)}" width="180" height="180" style="display:block; margin:0 0 8px;">`
+          )
+          .join("")}
+        <p style="margin:8px 0 0; font-size:12px; color:#757575;">当日、受付でこのQRコードをご提示いただくか、コードをスタッフにお伝えください。</p>
+      </div>`
+    : "";
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px;">TOKYO FASHION MARKET をご利用いただきありがとうございます。<br>以下の内容でお支払いが完了しました。</p>
+    ${orderNumber ? `<p style="margin:0 0 16px; font-size:13px; color:#3a3a3a;">ご注文番号: <strong>${esc(orderNumber)}</strong>（お問い合わせの際にお伝えください）</p>` : ""}
+    ${codesHtml}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; font-size:13px; margin:0 0 12px;">
+      <thead>
+        <tr><th style="text-align:left; padding:8px; border-bottom:2px solid #0d0d0d;">商品</th>
+            <th style="text-align:right; padding:8px; border-bottom:2px solid #0d0d0d;">数量</th>
+            <th style="text-align:right; padding:8px; border-bottom:2px solid #0d0d0d;">金額</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="margin:0 0 24px; font-size:14px; text-align:right;">合計　<strong>${yen(amountTotal)}</strong>（税込）</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;">
+      <tr><td>
+        <a href="${esc(SITE_URL)}/members.html" style="display:inline-block; background:#0d0d0d; color:#ffffff; text-decoration:none; font-size:14px; letter-spacing:0.02em; padding:14px 28px;">マイページで確認する</a>
+      </td></tr>
+    </table>`;
+
+  const html = buildEmailHtml({
+    heading: "ご購入ありがとうございました",
+    bodyHtml,
+    footerNote: "このメールに心当たりがない場合は、恐れ入りますが破棄してください。",
+  });
+
+  // HTMLを表示できないメールソフト向けのプレーンテキスト版
+  const textLines = [
+    "TOKYO FASHION MARKET をご利用いただきありがとうございます。以下の内容でお支払いが完了しました。",
+    ...(orderNumber ? [`ご注文番号: ${orderNumber}`] : []),
+    ...(codes.length ? [`当日の受付コード: ${codes.join(" / ")}（お一人につき1つ・1回のみ有効）`] : []),
+    "",
+    ...lineItems.map((i) => `${i.name} × ${i.quantity} … ${yen(i.amount)}`),
+    `合計: ${yen(amountTotal)}（税込）`,
+  ];
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -75,6 +127,7 @@ async function sendOrderConfirmationEmail({ to, lineItems, amountTotal, orderNum
       from: FROM_EMAIL,
       to,
       subject: "【TOKYO FASHION MARKET】ご購入ありがとうございました",
+      text: textLines.join("\n"),
       html,
     }),
   });

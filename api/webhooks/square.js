@@ -29,6 +29,7 @@ const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 const { sendOrderConfirmationEmail } = require("../_email");
 const { sendEmail } = require("../_mailer");
+const { qrDataUri } = require("../_qr");
 
 // 署名検証には生のリクエストボディが必須（JSON.parse後の再シリアライズはバイト単位で一致しない）。
 // Vercel の Node.js Functions はこの config でボディの自動パースを止められる。
@@ -61,58 +62,82 @@ function escHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-// 受付コードのQR画像URL。外部の無料サービス（api.qrserver.com）に生成を任せる
-// （追加のライブラリ・課金なしで済ませるため）。渡すのは受付コードの文字列だけで、
-// 氏名・メールアドレス等の個人情報は含まない。
-// サイト内表示にも使うため、vercel.json の CSP img-src にこのドメインを許可してある。
-function entryCodeQrUrl(code, size) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size || 240}x${size || 240}&data=${encodeURIComponent(code)}`;
-}
-
-// 当日の入場受付コード。「TFM-支払い確定日-ランダム4文字」の形式（例: TFM-20260802-7K4M）。
-// 見間違い・聞き見間違いしやすい文字（0/O, 1/I/L, U/V等）を除いた文字セットから選ぶ。
-// order_number（注文作成時に発行、問い合わせ用）とは別物 —
-// こちらは支払いが確定した時点で、チケットを含む注文にだけ発行する。
-const ENTRY_CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTWXYZ";
-function generateEntryCode() {
+// 受付コードのイベント識別部分。CURRENT_EVENT_ID（例: 0927）が設定されていればそれを、
+// 未設定なら支払い確定日（YYYYMMDD）を使う（設定し忘れても発行自体は止まらない）。
+// /checkin はこのプレフィックスで「今回のイベントのコードか」を判定するため、
+// イベントが決まったら CURRENT_EVENT_ID を設定する運用を推奨（README参照）。
+function currentEventId() {
+  const explicit = String(process.env.CURRENT_EVENT_ID || "").trim();
+  if (explicit) return explicit;
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  let suffix = "";
-  for (let i = 0; i < 4; i++) suffix += ENTRY_CODE_CHARS[crypto.randomInt(ENTRY_CODE_CHARS.length)];
-  return `TFM-${y}${m}${d}-${suffix}`;
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
 }
 
-// orders.entry_code はユニーク制約があるため、衝突したら別の値で数回だけ再試行する
-// （1日あたりランダム部分だけで約70万通りあるため、実際に衝突することはほぼ無い）。
-async function assignEntryCode(supabaseAdmin, orderId) {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = generateEntryCode();
-    const { data, error } = await supabaseAdmin
-      .from("orders")
-      .update({ entry_code: code })
-      .eq("id", orderId)
-      .select("entry_code")
-      .single();
-    if (!error) return data.entry_code;
-    if (error.code !== "23505") { console.error("entry_code assign failed:", error.message); return null; }
+// 受付コードの発行。1コード＝1人＝1回入場（数量2で買ったら別々のコードを2つ発行する）。
+// 実際の生成・保存はDB関数 issue_entry_passes（supabase/schema.sql）が行ロック付きで
+// 行うので、Squareが同じ通知を再送して同時に2回呼ばれても二重発行にならない
+// （2回目は発行済みのコードがそのまま返る）。
+async function issueEntryPasses(supabaseAdmin, order) {
+  const items = Array.isArray(order.line_items) ? order.line_items : [];
+  const quantity = items
+    .filter((i) => i.type === "ticket")
+    .reduce((n, i) => n + Math.max(1, parseInt(i.quantity, 10) || 1), 0);
+  if (quantity < 1) return [];
+
+  const { data, error } = await supabaseAdmin.rpc("issue_entry_passes", {
+    p_order_id: order.id,
+    p_event: currentEventId(),
+    p_quantity: quantity,
+  });
+  if (error) { console.error("issue_entry_passes failed:", error.message); return []; }
+  // returns setof text は文字列の配列で返る（PostgRESTの仕様が変わっても拾えるよう両対応）
+  return (data || [])
+    .map((r) => (typeof r === "string" ? r : (r && (r.issue_entry_passes || r.code))))
+    .filter(Boolean);
+}
+
+// 受付コードを発行できなかったときに運営へ知らせる。
+// これを出さないと、購入者にはコードの無いメールが届くだけで、
+// こちらは当日その人が受付に来るまで気づけない。
+async function notifyEntryCodeFailure(order) {
+  const adminTo = process.env.CONTACT_TO_EMAIL;
+  if (!adminTo) return;
+  try {
+    await sendEmail({
+      to: adminTo,
+      subject: "【要対応】受付コードを発行できませんでした",
+      text: [
+        `注文 ${order.order_number || order.id} の決済は完了しましたが、受付コードを発行できませんでした。`,
+        `購入者: ${order.buyer_email || "（不明）"}`,
+        "",
+        "このままだと当日この方が入場できません。Supabaseで下記を確認し、手動で対応してください。",
+        "  select o.id, o.order_number, o.buyer_email, o.created_at from orders o",
+        "   where o.status='paid' and not exists (select 1 from entry_passes ep where ep.order_id = o.id);",
+        "",
+        "よくある原因: supabase/schema.sql の entry_passes 部分の未実行、issue_entry_passes 関数の権限不足。",
+      ].join("\n"),
+    });
+  } catch (e) {
+    console.error("entry code failure notify email failed:", e);
   }
-  console.error("entry_code assign failed: 衝突が続いたため断念しました orderId=", orderId);
-  return null;
 }
 
 // アプリ内通知（notifications テーブル）用の本文組み立て
-function buildOrderNotification(lineItems, amountTotal, orderNumber, entryCode) {
+function buildOrderNotification(lineItems, amountTotal, orderNumber, entryCodes) {
   const items = Array.isArray(lineItems) ? lineItems : [];
+  const codes = Array.isArray(entryCodes) ? entryCodes : [];
   const total = `￥${Number(amountTotal).toLocaleString("ja-JP")}`;
   const body =
     items.length <= 1
       ? `${(items[0] && items[0].name) || "ご注文"}（合計 ${total}）のお支払いが完了しました。`
       : `${items[0].name} ほか${items.length - 1}点（合計 ${total}）のお支払いが完了しました。`;
   const withOrderNumber = orderNumber ? `${body}\nご注文番号: ${orderNumber}` : body;
-  const withEntryCode = entryCode ? `${withOrderNumber}\n当日の受付コード: ${entryCode}` : withOrderNumber;
-  return { title: "ご購入ありがとうございました", body: withEntryCode };
+  const codesText = codes.length
+    ? codes.length === 1
+      ? `\n当日の受付コード: ${codes[0]}`
+      : `\n当日の受付コード: ${codes.join(" / ")}\nコードはお一人につき1つ・1回のみ有効です。ご同行者にはそれぞれのコード（QR）をお渡しください。`
+    : "";
+  return { title: "ご購入ありがとうございました", body: withOrderNumber + codesText };
 }
 
 // 運営宛ての通知メール。お問い合わせと同じ宛先（CONTACT_TO_EMAIL）に送る。
@@ -134,7 +159,9 @@ async function notifyAdmin(order, newStatus) {
     `合計: ￥${Number(order.amount_total || 0).toLocaleString("ja-JP")}`,
     `購入者: ${order.buyer_email || "（不明）"}`,
     ...(order.order_number ? [`注文番号: ${order.order_number}`] : []),
-    ...(isPaid && order.entry_code ? [`受付コード: ${order.entry_code}`] : []),
+    ...(isPaid && Array.isArray(order.entry_codes) && order.entry_codes.length
+      ? [`受付コード: ${order.entry_codes.join(" / ")}`]
+      : []),
   ];
   try {
     await sendEmail({ to: adminTo, subject, text: lines.join("\n") });
@@ -259,34 +286,61 @@ module.exports = async (req, res) => {
   }
 
   // チケットを含む注文にだけ、当日の入場受付コードを発行する（グッズのみの注文には不要）。
-  // この処理自体が「status='pending'→'paid' の更新が成功した時だけ」実行されるブロック内にあるため、
-  // Webhookの重複配信があってもentry_codeが上書き・再発行されることはない
-  // （2回目以降は`updated`がnullになりここまで到達しない）。
+  // 1コード＝1人＝1回入場なので、チケットの数量分のコードが返る。
+  // この処理自体が「status='pending'→'paid' の更新が成功した時だけ」実行されるブロック内にあり、
+  // さらにDB関数側でも発行済みならそのまま返す設計のため、Webhookの重複配信があっても
+  // 再発行・二重発行されることはない。
   const items = Array.isArray(updated.line_items) ? updated.line_items : [];
   const hasTicket = items.some((i) => i.type === "ticket");
-  const entryCode = hasTicket ? await assignEntryCode(supabaseAdmin, updated.id) : null;
+  const entryCodes = hasTicket ? await issueEntryPasses(supabaseAdmin, updated) : [];
+  if (hasTicket && !entryCodes.length) await notifyEntryCodeFailure(updated);
 
   const result = await sendOrderConfirmationEmail({
     to: updated.buyer_email,
     lineItems: updated.line_items,
     amountTotal: updated.amount_total,
     orderNumber: updated.order_number,
-    entryCode,
+    entryCodes,
   });
   if (result && result.ok === false) {
     // メール送信に失敗しても決済確定自体は成功しているので200を返す（Squareの再送対象にはしない）。
+    // 届かなかったこと自体には誰も気づけないため、運営に知らせておく
+    // （サイト内通知は下で入るので購入者は当日困らないが、「メールが来ない」と
+    // 問い合わせが来る前にこちらから対応できるようにする）。
     console.error("square webhook: 確認メール送信に失敗しました。orderId:", updated.id);
+    if (process.env.CONTACT_TO_EMAIL) {
+      try {
+        await sendEmail({
+          to: process.env.CONTACT_TO_EMAIL,
+          subject: "【要対応】購入確認メールを送信できませんでした",
+          text: [
+            `注文 ${updated.order_number || updated.id} の購入確認メールを ${updated.buyer_email || "（不明）"} に送信できませんでした（Resendのエラー）。`,
+            `受付コード: ${entryCodes.length ? entryCodes.join(" / ") : "（発行なし）"}`,
+            "サイト内通知（マイページのお知らせ）には同じ内容が入っています。",
+            "必要ならこのお客様に手動でメールしてください。",
+          ].join("\n"),
+        });
+      } catch (e) {
+        console.error("square webhook: メール送信失敗の運営通知にも失敗しました", e);
+      }
+    }
   }
 
   // アプリ内通知を1件作成（失敗してもメールと同様に決済確定自体は成功扱いのまま続行）。
   // この insert 自体が「status='pending'→'paid' の更新が成功した時だけ」実行される上のブロック内にあるため、
   // Webhookの重複配信があっても通知が二重に作られることはない。
   // 受付コードがある場合は、通知ベル・マイページでQR画像もその場で見られるようにする
-  // （body_html。メールと同じQRを表示する）。
-  const notif = buildOrderNotification(updated.line_items, updated.amount_total, updated.order_number, entryCode);
-  const bodyHtml = entryCode
+  // （body_html。メールと同じQRをその場で生成して埋め込む＝外部サービスへの通信なし）。
+  const notif = buildOrderNotification(updated.line_items, updated.amount_total, updated.order_number, entryCodes);
+  const bodyHtml = entryCodes.length
     ? `<p>${escHtml(notif.body).replace(/\n/g, "<br>")}</p>` +
-      `<img src="${entryCodeQrUrl(entryCode, 140)}" alt="受付QRコード ${escHtml(entryCode)}" width="140" height="140" style="margin-top:8px;">`
+      entryCodes
+        .map(
+          (c, i) =>
+            `<p style="margin-top:10px; font-weight:700;">${entryCodes.length > 1 ? `${i + 1}人目：` : ""}${escHtml(c)}</p>` +
+            `<img src="${qrDataUri(c, 12)}" alt="受付QRコード ${escHtml(c)}" width="140" height="140" style="margin-top:4px;">`
+        )
+        .join("")
     : null;
   const { error: notifError } = await supabaseAdmin.from("notifications").insert({
     user_id: updated.user_id,
@@ -301,7 +355,7 @@ module.exports = async (req, res) => {
   }
 
   // 運営にも購入があったことを知らせる（見逃し防止。CONTACT_TO_EMAIL未設定ならスキップ）
-  await notifyAdmin({ ...updated, entry_code: entryCode }, "paid");
+  await notifyAdmin({ ...updated, entry_codes: entryCodes }, "paid");
 
   res.status(200).send("ok");
 };

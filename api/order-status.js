@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
   const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select("status, line_items, amount_total, order_number, entry_code")
+    .select("status, line_items, amount_total, order_number")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -51,11 +51,24 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // 受付コードは1人1コード（entry_passesテーブル）。まとめ買いなら人数分返る。
+  let entryCodes = [];
+  if (data.status === "paid") {
+    const { data: passes, error: passErr } = await supabaseAdmin
+      .from("entry_passes")
+      .select("code")
+      .eq("order_id", orderId)
+      .eq("status", "valid");
+    if (passErr) console.error("order-status: 受付コードの取得に失敗しました", passErr);
+    // 連番の数字順（文字列順だと 10 が 2 より前に来てしまうため長さ→辞書順で並べる）
+    entryCodes = (passes || []).map((p) => p.code).sort((a, b) => a.length - b.length || a.localeCompare(b));
+  }
+
   res.status(200).json({
     status: data.status,
     lineItems: data.line_items,
     amountTotal: data.amount_total,
     orderNumber: data.order_number,
-    entryCode: data.entry_code,
+    entryCodes,
   });
 };

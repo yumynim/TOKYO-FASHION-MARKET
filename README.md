@@ -108,6 +108,35 @@ Supabaseの個人アカウントではなく、`ADMIN_CONSOLE_PASSWORD`（Vercel
 `RESEND_SEND_ENABLED=true`）を共有しているため、ドメイン未接続の間はお知らせ配信・お問い合わせ
 返信のメールも自動的にスキップされる（サイト内通知・DB保存は影響を受けない）。
 
+- 会員名簿: 会員1人ごとに登録情報・購入履歴（受付コード・入場状況）・配信したお知らせ・
+  お問い合わせをまとめて確認できる。「支払い済みなのに受付コード未発行」の注文も
+  ここで自動検知される（Webhook不達などの事故の早期発見用）
+
+## 当日の入場確認（`/checkin`）
+
+イベント当日、スタッフが受付コード（QR）を読み取って入場を記録するページ。
+
+- **受付コードは「1人1コード」**。数量2でチケットを買うと別々のコードが2つ発行され、
+  確認メール・通知にQR付きで届く（1コード＝1人＝1回入場。QRはサーバー側で生成して
+  base64で直接埋め込むため、外部サービスの障害に左右されない）
+- カメラでのQR読み取り（Android Chrome等の`BarcodeDetector`対応ブラウザ。iPhoneは手入力）と手入力の両対応
+- 誤操作の取り消し、「コードが分からない方」をお名前・メールアドレスから探して入場させる機能付き
+- **開催日ゲート**: `CURRENT_EVENT_ID`（例: `0927` = 9月27日）から開催日を判定し、
+  当日以外の読み取りを拒否する。テスト時は `EVENT_DATE`（`YYYY-MM-DD` または `any`）で上書きできる
+  （テスト後は必ず削除）
+
+合言葉は2種類:
+- `ADMIN_CONSOLE_PASSWORD` … 運営用。`/console` と `/checkin` の両方が使える
+- `CHECKIN_PASSWORD`（任意） … 当日スタッフ用。`/checkin` だけ使える
+  （お問い合わせ・会員名簿・一斉配信には触れない。ボランティアに渡すのはこちら）
+
+セットアップ:
+1. `supabase/schema.sql`（`entry_passes`/`entry_code_counters`テーブル・発行/入場/取り消し関数の追加分）を
+   Supabase SQL Editorで実行
+2. イベントが決まったらVercel環境変数に `CURRENT_EVENT_ID`（例: `0927`）を設定 → Redeploy
+3. 当日スタッフに手伝ってもらう場合は `CHECKIN_PASSWORD` も設定
+4. `https://<本番ドメイン>/checkin` を当日スタッフの端末で開き、合言葉でログイン
+
 ## 今後の設定手順（Vercel / Supabase / Resend / Square）
 
 ### 1. Supabase
@@ -162,8 +191,12 @@ Supabaseの個人アカウントではなく、`ADMIN_CONSOLE_PASSWORD`（Vercel
 | `RESEND_FROM_EMAIL` | 公開可（送信元アドレス。★ドメイン接続後はこれだけ変更すればよい） |
 | `RESEND_SEND_ENABLED` | 公開可。`true`の時だけ実際に送信する本番スイッチ（ドメイン接続完了までは未設定/`false`のままにする） |
 | `SITE_URL` | 公開可（決済完了後の戻り先URL・Webhook署名検証に使用） |
-| `ADMIN_CONSOLE_PASSWORD` | **非公開・Vercelのみ**（`/console`のログイン合言葉。トークンの署名鍵も兼ねる） |
+| `ADMIN_CONSOLE_PASSWORD` | **非公開・Vercelのみ**（`/console`のログイン合言葉） |
 | `CONTACT_TO_EMAIL` | 非公開推奨（お問い合わせフォームの「届きました」通知メールの宛先。未設定でも保存自体は動作する） |
+| `CHECKIN_PASSWORD` | **非公開・Vercelのみ**（任意。当日スタッフ用の合言葉。`/checkin`だけ使える） |
+| `ADMIN_TOKEN_SECRET` | **非公開・Vercelのみ**（任意・推奨。管理トークンの署名鍵。`openssl rand -hex 32`等で生成） |
+| `CURRENT_EVENT_ID` | 公開可（今回のイベント識別番号。例: `0927`。受付コードの識別と開催日判定に使用） |
+| `EVENT_DATE` | 公開可（テスト用。通常は未設定。`YYYY-MM-DD`か`any`。**テスト後は必ず削除**） |
 
 3. Deploy。`/api` 配下のファイルは自動でサーバーレス関数として認識されます（追加設定不要）
 
@@ -180,11 +213,11 @@ Supabaseの個人アカウントではなく、`ADMIN_CONSOLE_PASSWORD`（Vercel
 
 meta description・OGP・Twitterカード・JSON-LD構造化データ・sitemap.xml・robots.txt 設定済み。
 
-⚠️ **公開ドメインが決まったら要更新**（現在は仮ドメイン `https://tokyo-fashion-market.vercel.app`）：
-1. 全HTMLの `https://tokyo-fashion-market.vercel.app` を実ドメインに一括置換（canonical / og:url / og:image / JSON-LD）
-2. `robots.txt` と `sitemap.xml` の同URLも置換
-3. `.env` の `SITE_URL` も実ドメインに変更
-4. 独自ドメインを使う場合はVercelのドメイン設定も行う
+**独自ドメイン `https://tokyofashionmarket.com` に接続済み**（2026-08-04、Vercel・Resendとも接続完了）。
+全HTML・`robots.txt`・`sitemap.xml`のURLは一括置換済み。残っているのは以下のみ：
+- [ ] Vercel環境変数 `SITE_URL` を `https://tokyofashionmarket.com` に変更 → Redeploy
+  （Square Webhookを設定する際は、この`SITE_URL`を使ってNotification URLを組み立てるため、
+  Square設定より前にこれを終わらせておくと二度手間にならない）
 
 SNSシェア画像は `img/ogp.jpg`（1200×630）。差し替え可。
 

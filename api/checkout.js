@@ -17,7 +17,7 @@
 //   SQUARE_ACCESS_TOKEN         ← 絶対に公開しない
 //   SQUARE_LOCATION_ID
 //   SQUARE_ENVIRONMENT          ← "sandbox" または "production"
-//   SITE_URL                    ← 例: https://tokyo-fashion-market.vercel.app
+//   SITE_URL                    ← 例: https://tokyofashionmarket.com
 // ==========================================================
 
 const crypto = require("crypto");

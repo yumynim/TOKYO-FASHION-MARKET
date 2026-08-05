@@ -12,8 +12,10 @@
 サイト本体はビルド不要の静的HTML/CSS/JS。ログイン（Supabase Auth）と決済（Square）だけ
 `/api` 配下の Vercel Serverless Functions（Node）で処理する。
 
-- 現状URL（仮ドメイン）: **https://tokyo-fashion-market.vercel.app**
-- 独自ドメイン未確定。確定後は `README.md`「SEO / 公開ドメインについて」の手順で一括置換が必要
+- 本番URL: **https://tokyofashionmarket.com**（2026-08-04、独自ドメイン取得・Vercel接続・Resend接続
+  すべて完了。旧仮ドメイン`https://tokyo-fashion-market.vercel.app`もVercel側で引き続き有効）
+- 全HTML・`robots.txt`・`sitemap.xml`・コード内のURLは新ドメインへ一括置換済み（下記セッション22参照）。
+  残作業はVercel環境変数 `SITE_URL` の変更のみ（未完了の作業 P3/P4参照）
 - クライアント向け仕様確定用に `要件確認ヒアリングシート.docx`、素材収集用に `指示テンプレート.txt` を用意済み
 
 # 現在の構成
@@ -279,13 +281,16 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 
 # 現在作業中の内容
 
-1. Supabase認証（新規登録・ログイン）の実地確認待ち。ユーザー本人が本番サイトで新規登録→
-   Supabase Authentication→Usersへの反映→再ログインの3点をテストする予定。結果待ちで
-   問題があれば原因調査・修正を行う。
+1. **（最優先・今すぐ）** ドメイン接続後の環境変数設定待ち。P3（`RESEND_FROM_EMAIL`/`RESEND_SEND_ENABLED`）・
+   P4（`SITE_URL`）・P0.5（`ADMIN_CONSOLE_PASSWORD`）をこれから設定する予定（セッション22参照）
 2. `tokushoho.html`の「事業者の所在地」（神奈川県〜）が確定待ち。ユーザーが取引先に確認中。
    確定次第、該当セルを書き換える
 3. イベントの詳細写真（`js/data.js`の`EVENTS[].images`）・メンバー写真が未投入（後日追加予定）
-4. **管理コンソール（/console）の実地確認待ち**（セッション9で新規実装、下記「未完了の作業」P0.5参照）
+4. 管理コンソール（/console）の実地確認待ち（セッション9で実装、`ADMIN_CONSOLE_PASSWORD`未設定のためログイン不可。P0.5参照）
+5. Supabase新規登録・ログインの実地確認: セッション9以降、本番で「未ログイン時は購入履歴が見えない」
+   等の記述が複数回登場しており、ログイン機能自体は動作している可能性が高いが、P0の3項目
+   （新規登録→Users反映→再ログイン）が明示的に「確認済み」と記録されたセッションは無い。
+   不明な場合は再確認を推奨
 
 # 未完了の作業
 
@@ -326,35 +331,36 @@ tsc/jest 等の自動テストは存在しない（静的サイトのため）�
 - [ ] **（あなた）** Square Developer Dashboardでアプリを作成し、Sandbox用の
       `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` を取得
 - [ ] **（あなた）** Vercel環境変数に `SQUARE_ACCESS_TOKEN` / `SQUARE_LOCATION_ID` /
-      `SQUARE_ENVIRONMENT=sandbox` / `SITE_URL`（仮ドメインのままでよい）を設定 → Redeploy
+      `SQUARE_ENVIRONMENT=sandbox` を設定 → Redeploy（`SITE_URL`はP4で先に本番ドメインへ設定済みにしておく）
 - [ ] **（あなた）** Square Developer Dashboard → Webhooks で
-      Notification URL（`{SITE_URL}/api/webhooks/square`）を登録し、購読イベントに`payment.updated`を追加。
-      発行されたSignature Keyを控える
+      Notification URL（`https://tokyofashionmarket.com/api/webhooks/square`）を登録し、
+      購読イベントに`payment.updated`を追加。発行されたSignature Keyを控える
 - [ ] **（あなた）** Vercel環境変数に `SQUARE_WEBHOOK_SIGNATURE_KEY` を設定 → Redeploy
 - [ ] **（あなた）** Sandboxで実際にテスト決済を行い、以下を確認:
   - [ ] 購入完了ページ（`checkout-complete.html`）に注文内容が表示される
   - [ ] Supabaseの`orders`テーブルで該当行が`status: paid`になっている
   - [ ] ヘッダーの通知ベルに購入確認の通知が届く（`notifications`テーブルへのINSERTも合わせて確認）
-  - [ ] （`RESEND_SEND_ENABLED=true`にしていれば）確認メールが届く。ドメイン未接続の間はスキップされるのが正常
+  - [ ] `RESEND_SEND_ENABLED=true`にしていれば確認メールが届く
 - [ ] **（あなた）** Sandboxで問題なければ、本番用の Access Token / Location ID に差し替え、
       `SQUARE_ENVIRONMENT=production` に変更 → Redeploy
 
-## P3. Resendの送信ドメイン接続（独自ドメイン取得後）
-- [ ] **（あなた）** 独自ドメインを取得し、Vercelに接続
-- [ ] **（あなた）** Resendダッシュボードで送信ドメイン（`mail.`等のサブドメイン推奨）を追加し、
-      表示されるSPF/DKIM/DMARCのDNSレコードをドメインの管理画面に設定・認証を完了させる
-- [ ] **（あなた）** Vercel環境変数 `RESEND_FROM_EMAIL` を認証済みドメインの送信元アドレスに変更
+## P3. Resendの送信ドメイン接続 → **ドメイン取得・DNS認証まで完了（2026-08-04）**
+- [x] ~~独自ドメインを取得し、Vercelに接続~~ → **完了**（`https://tokyofashionmarket.com`）
+- [x] ~~Resendダッシュボードで送信ドメインを追加しSPF/DKIM/DMARC認証~~ → **完了**（ユーザー報告「resend繋げられた」）
+- [ ] **（あなた）** Vercel環境変数 `RESEND_FROM_EMAIL` を認証済みドメインの送信元アドレスに変更 → Redeploy
 - [ ] **（あなた）** Vercel環境変数 `RESEND_SEND_ENABLED` を `true` に変更 → Redeploy
-      （この3手順が終わるまでは、コードは意図的にメール送信をスキップし続ける安全設計）
+      （この2つが終わって初めて購入確認メール・お知らせ配信・お問い合わせ自動返信が実送信される）
 - [ ] **（あなた・任意）** Supabase Auth の SMTP送信元もResendに変更（現状はSupabaseのデフォルト送信のまま）
 
-## P4. 独自ドメイン確定後の一括置換
-- [ ] **（Claude）** 全HTMLの `https://tokyo-fashion-market.vercel.app` を実ドメインに一括置換
-      （canonical / og:url / og:image / JSON-LD）
-- [ ] **（Claude）** `robots.txt` と `sitemap.xml` の同URLも置換
-- [ ] **（あなた）** Vercel環境変数 `SITE_URL` を実ドメインに変更 → Redeploy
-      （Square Webhookの署名検証・決済完了後のリダイレクト先に影響するため、Webhook側のNotification URLも
-      合わせて更新が必要）
+## P4. 独自ドメイン確定後の一括置換 → **コード側は完了（2026-08-04、Claude作業）**
+- [x] ~~全HTMLの `https://tokyo-fashion-market.vercel.app` を実ドメインに一括置換~~ → **完了**
+      （canonical / og:url / og:image / JSON-LD。対象16ファイル）
+- [x] ~~`robots.txt` と `sitemap.xml` の同URLも置換~~ → **完了**
+- [x] ~~コード内のドメイン参照（コメント・フォールバック値・プレースホルダー文言）も置換~~ → **完了**
+      （`api/checkout.js`のコメント、`api/_mailer.js`の`SITE_URL`フォールバック、`js/console.js`の入力欄プレースホルダー）
+- [ ] **（あなた）** Vercel環境変数 `SITE_URL` を `https://tokyofashionmarket.com` に変更 → Redeploy
+      （**最優先**。Square Webhookの署名検証・決済完了後のリダイレクト先・お知らせ配信内のリンクに影響する。
+      これを設定してからP2のSquare Webhook登録に進むと二度手間にならない）
 
 ## P5. コンテンツ整備（優先度低・随時）
 - [ ] **（あなた）** イベントの詳細写真を`js/data.js`の`EVENTS[].images`に追加（最大3枚/件、`event-detail.html`に反映される）
@@ -780,7 +786,97 @@ DRESS CODE TOKYOのコードを再度精読して以下を実装した。
 - `/api/env-check`で最新コミット（cc02d2d）のデプロイ済みも確認。`ADMIN_CONSOLE_PASSWORD`等が
   未設定のままである点は既知（P0.5参照、ユーザー作業待ち）
 
+## 2026-08-04 セッション22（独自ドメイン確定・Resend接続 → URL一括置換）
+
+ユーザーから独自ドメイン`https://tokyofashionmarket.com`の取得・Vercel接続・Resend接続（DNS認証含む）が
+完了したと報告（「resend繋げられた！！！！」）。ブラウザで実際に新ドメインが本番サイトを配信していることを
+確認した上で、P4（URL一括置換）に着手。
+
+- **全16 HTMLファイル・`robots.txt`・`sitemap.xml`**の`https://tokyo-fashion-market.vercel.app`を
+  `https://tokyofashionmarket.com`に一括置換（canonical / og:url / og:image / JSON-LD）
+- **コード内の参照も置換**（機能に影響する順に）:
+  - `api/_mailer.js`の`SITE_URL`環境変数未設定時のフォールバック値
+    （`SITE_URL`をまだVercelに設定していない場合、お知らせ配信・お問い合わせ返信メール内のリンクに使われる）
+  - `api/checkout.js`のコメント内の例示URL（コードの動作には影響しない）
+  - `js/console.js`の配信エディタ「リンクブロック」の入力欄プレースホルダー文言（表示のみ、動作に影響しない）
+- `event-detail.html` / `checkout-complete.html` / `admin-announcements.html`は元々canonical/OGPを
+  持たないページのため対象外（意図した設計、漏れではない）
+- 全JS構文チェック通過。ブラウザでの目視確認は未実施（次のセッションでVercel環境変数設定後にまとめて確認予定）
+- **見つけた副産物**: この作業中に、`docs/PROJECT_STATE.md`が実際にはセッション9〜21まで
+  非常に詳細に更新され続けていたことを確認（このセッション開始時点でこちらが把握していたのは
+  セッション8までの内容だった＝別の場所・セッションで大量の作業が進んでいたことが判明。
+  管理コンソール・マイページ本格実装・DRESS CODE TOKYO比較移植・画像最適化・バグ修正などが
+  すでに本番へコミット・pushされていた）
+
+## 2026-08-05 セッション23（DRESS CODE TOKYOを「型」にした大規模移植：当日受付・1人1コード・会員名簿・メール刷新）
+
+ユーザーの依頼「ドレスコードを型にしてTFMバージョンにして作って（console・checkin・メール・
+お問い合わせ等。Resendは接続済み）」を受け、DRESS CODE TOKYOで実証済みの仕組みを一括移植。
+
+### 1. 受付コードを「1人1コード」方式に変更（最重要の仕様変更）
+- 旧方式（`orders.entry_code`＝1注文1コード）は、まとめ買い時に1つのQRを人数分読み回す必要があり
+  読み間違いの温床だったため、**1コード＝1人＝1回入場**に変更（DCTのschema_v16と同じ設計）
+- `supabase/schema.sql`に追記: `entry_passes`テーブル（1行=1人分）、`entry_code_counters`（イベント別連番）、
+  `issue_entry_passes`/`checkin_pass`/`undo_pass`/`next_entry_seq`の4関数（すべて行ロック付き・service_role専用）
+- コード形式: `TFM-{イベントID}-{連番}-{ランダム4文字}`（例: TFM-0927-1-7K4M）。
+  イベントIDは環境変数`CURRENT_EVENT_ID`（未設定なら支払い確定日YYYYMMDD）
+- 旧`orders.entry_code`の発行済みデータはSQL内で自動移行。列自体は互換のため残置（新規発行はしない）
+
+### 2. 当日受付システム `/checkin`（新規）
+- `checkin.html`＋`js/checkin.js`（CSPのため外部JS）＋`api/admin-checkin.js`
+- QRカメラ読み取り（BarcodeDetector）・手入力・取り消し・お名前/メール検索・開催日ゲート
+  （`EVENT_DATE`/`CURRENT_EVENT_ID`）・音/振動フィードバック・通信失敗時の二重カウント防止（requestId）
+- `vercel.json`: `/checkin`のrewrite追加＋`/checkin`だけ`Permissions-Policy: camera=(self)`（他ページはカメラ拒否のまま）
+- 合言葉を2権限に分離: `ADMIN_CONSOLE_PASSWORD`（admin=console+checkin）と`CHECKIN_PASSWORD`（checkinのみ、
+  当日ボランティア用）。`api/_adminAuth.js`をscope付きトークン＋scrypt/`ADMIN_TOKEN_SECRET`鍵強化に刷新
+  （旧形式トークンは無効になるが24時間で自然消滅するもののため影響なし）
+
+### 3. 会員名簿（/consoleに新セクション）
+- `api/admin-members.js`（admin権限必須）: 会員ごとに登録情報・購入履歴（コード・入場状況）・
+  配信済みお知らせ・お問い合わせを集約。**「支払い済みなのに受付コード未発行」の注文を自動検知**して警告表示
+- `js/console.js`＋`admin-announcements.html`に名簿UI（検索・展開式カード）を追加
+
+### 4. メール・QRの刷新
+- `api/_email.js`（購入確認メール）を`_mailer.js`の`buildEmailHtml`（モノクロブランドテンプレ）ベースに刷新。
+  プレーンテキスト版も同梱
+- QRを外部サービス（api.qrserver.com）から**サーバー側生成のbase64埋め込み**（`api/_qr.js`＋qr-image依存追加）に変更
+  （複数QRを1通に載せたときの表示欠落事故を防ぐ。DCTで実際に起きた問題への対策）
+- 確認メール・通知(body_html)・マイページ・購入完了ページを複数コード対応に
+  （`api/webhooks/square.js`・`api/order-status.js`・`api/my-orders.js`・`js/pages.js`・`js/checkout-complete.js`）
+- メール送信失敗・コード発行失敗時に運営（CONTACT_TO_EMAIL）へ自動アラート
+
+### 5. セキュリティ・共通化
+- `api/_rateLimit.js`を新設し、`contact.js`の内蔵レート制限を置き換え＋`admin-login.js`にも適用（合言葉総当たり対策）
+- 管理系GETのトークンをURL`?token=`から`x-admin-token`ヘッダーへ変更（アクセスログに残さないため。
+  `admin-orders`/`admin-inquiries`/`admin-announcements`/`console.js`）
+- /consoleにcheckin用合言葉でログインしようとした場合は案内を表示して拒否
+- QR画像が通知欄の「画像を切り抜くCSS」で欠けないよう`img[alt^="受付QRコード"]`の例外ルールを追加
+
+### 検証
+- 全JS構文チェック通過、QR生成・メールHTML生成をNodeで実地確認、
+  checkin.html/consoleの新UIをローカルプレビューで表示確認（レイアウト崩れ・横スクロールなし）
+- **未検証**: Supabase/Square実環境でのentry_passes発行〜チェックインの通し確認（下記「ユーザー側の作業」参照）
+
+### ユーザー側の作業（このセッション分の反映に必要）
+1. **Supabase SQL Editorで `supabase/schema.sql` を再実行**（entry_passes等の追加分。何度実行しても安全）
+2. Vercel環境変数: `ADMIN_CONSOLE_PASSWORD`（未設定のまま・最優先）に加え、任意で
+   `CHECKIN_PASSWORD`（当日スタッフ用）・`ADMIN_TOKEN_SECRET`（推奨）・`CURRENT_EVENT_ID`（イベント確定後）
+3. Sandboxでテスト決済し、確認メールのQR表示・/checkinでの入場確認を通しでテスト
+
 # 最終更新
+
+**2026-08-05（セッション23）**
+DRESS CODE TOKYOを型に、当日受付システム（/checkin）・受付コードの1人1コード化（entry_passes）・
+会員名簿・購入確認メールのブランドテンプレ化＋QR自前生成・レート制限共通化・管理トークン強化を一括移植。
+ユーザー側でschema.sqlの再実行とVercel環境変数の設定が必要（セッション23の「ユーザー側の作業」参照）。
+
+**2026-08-04（セッション22）**
+独自ドメイン`https://tokyofashionmarket.com`のVercel接続・Resend接続（DNS認証含む）が完了したとの
+報告を受け、全HTML・robots.txt・sitemap.xml・関連コード内のURLをvercel.appドメインから一括置換。
+残るのはVercel環境変数`SITE_URL`/`RESEND_FROM_EMAIL`/`RESEND_SEND_ENABLED`の設定のみ（P3/P4参照）。
+このセッション開始時点で`docs/PROJECT_STATE.md`がセッション9〜21分（管理コンソール・マイページ・
+DRESS CODE TOKYO比較移植・画像最適化等、別セッションでの大量の作業）を含んでいたことが判明した。
+詳細は「セッション22」節参照。
 
 **2026-08-03（セッション21）**
 本番サイトをPC/スマホ両幅で総点検。全ページ・全機能・全アセットに問題なし、コンソールエラーゼロ、

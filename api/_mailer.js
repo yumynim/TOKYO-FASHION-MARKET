@@ -12,7 +12,7 @@
 // 上記のいずれかが未設定/無効の間は静かに送信をスキップする。
 // ==========================================================
 
-const SITE_URL = (process.env.SITE_URL || "https://tokyo-fashion-market.vercel.app").replace(/\/$/, "");
+const SITE_URL = (process.env.SITE_URL || "https://tokyofashionmarket.com").replace(/\/$/, "");
 
 // お問い合わせへの返信専用の送信元にしたい場合はこちらを使う（未設定ならRESEND_FROM_EMAILを使う）。
 // ドメイン接続後、返信専用アドレスを分けたくなったら環境変数化を検討する。
