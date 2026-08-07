@@ -54,7 +54,7 @@ function textToHtmlParagraphs(text) {
 function buttonHtml(label, url) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px;">
     <tr><td>
-      <a href="${escapeHtml(sanitizeUrl(url))}" style="display:inline-block; background:#0d0d0d; color:#ffffff; text-decoration:none; font-size:14px; letter-spacing:0.02em; padding:14px 28px;">${escapeHtml(label)}</a>
+      <a href="${escapeHtml(sanitizeUrl(url))}" style="display:inline-block; background:#0d0d0d; color:#ffffff; text-decoration:none; font-size:14px; letter-spacing:0.08em; padding:14px 28px;">${escapeHtml(label)}</a>
     </td></tr>
   </table>`;
 }
@@ -114,10 +114,15 @@ function renderBlocks(blocks) {
   return { html: htmlParts.join(""), text: textParts.join("\n\n") };
 }
 
-/* 黒白ベースのシンプルなメールテンプレート。CSSはすべてインラインで書く
-   （メールクライアントのCSS対応差異に耐えるため）。 */
+/* サイト本体のロゴ書体・見出しの太字＋広めのレタースペーシング・1pxの黒枠に合わせた
+   モノクロのメールテンプレート。CSSはすべてインラインで書く
+   （メールクライアントのCSS対応差異に耐えるため）。
+   ヘッダー・フッターを黒背景にして、実サイトのフッター（.site-footer）と同じ配色に揃えている
+   （見出しに広いレタースペーシングの英字幾何サンセリフを使う、他社の白basedの明朝＋クリーム色とは
+   意図的に違う方向のトーン）。 */
 function buildEmailHtml({ heading, bodyHtml, ctaLabel, ctaUrl, footerNote }) {
   const cta = ctaLabel && ctaUrl ? buttonHtml(ctaLabel, ctaUrl) : "";
+  const brandFont = "'Montserrat','Helvetica Neue',Arial,sans-serif";
 
   return `<!doctype html>
 <html lang="ja">
@@ -127,18 +132,19 @@ function buildEmailHtml({ heading, bodyHtml, ctaLabel, ctaUrl, footerNote }) {
 <title>TOKYO FASHION MARKET</title>
 </head>
 <body style="margin:0; padding:0; background:#f5f5f5; font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN',-apple-system,BlinkMacSystemFont,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5; padding:32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5; padding:40px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%; max-width:600px; background:#ffffff;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%; max-width:600px; background:#ffffff; border:1px solid #0d0d0d;">
           <tr>
-            <td style="padding:32px 32px 24px; text-align:center; border-bottom:1px solid #0d0d0d;">
-              <div style="font-family:Arial,Helvetica,sans-serif; font-size:20px; letter-spacing:0.06em; color:#0d0d0d; font-weight:700;">TOKYO FASHION MARKET</div>
+            <td style="padding:26px 32px; text-align:center; background:#0d0d0d;">
+              <div style="font-family:${brandFont}; font-size:13px; font-weight:700; letter-spacing:0.32em; color:#ffffff;">TOKYO<br>FASHION&nbsp;MARKET</div>
             </td>
           </tr>
           <tr>
-            <td style="padding:40px 32px 8px;">
-              <h1 style="margin:0 0 20px; font-size:19px; font-weight:600; color:#0d0d0d; letter-spacing:0.02em;">${escapeHtml(heading)}</h1>
+            <td style="padding:44px 32px 8px;">
+              <div style="width:28px; height:3px; background:#0d0d0d; margin:0 0 18px;"></div>
+              <h1 style="margin:0 0 22px; font-size:21px; font-weight:900; color:#0d0d0d; letter-spacing:0.04em; line-height:1.5;">${escapeHtml(heading)}</h1>
               <div style="font-size:15px; line-height:1.9; color:#3a3a3a;">
                 ${bodyHtml}
               </div>
@@ -146,9 +152,9 @@ function buildEmailHtml({ heading, bodyHtml, ctaLabel, ctaUrl, footerNote }) {
             </td>
           </tr>
           <tr>
-            <td style="padding:24px 32px; background:#f5f5f5; border-top:1px solid #e4e4e4;">
-              <p style="margin:0 0 4px; font-size:12px; color:#757575;">TOKYO FASHION MARKET</p>
-              <p style="margin:0; font-size:12px; color:#757575;">${escapeHtml(footerNote || "このメールに心当たりがない場合は破棄してください。")}</p>
+            <td style="padding:28px 32px 32px; background:#0d0d0d;">
+              <p style="margin:0 0 6px; font-family:${brandFont}; font-size:11px; font-weight:700; letter-spacing:0.24em; color:#ffffff;">TOKYO FASHION MARKET</p>
+              <p style="margin:0; font-size:11.5px; color:#bdbdbd;">${escapeHtml(footerNote || "このメールに心当たりがない場合は破棄してください。")}</p>
             </td>
           </tr>
         </table>

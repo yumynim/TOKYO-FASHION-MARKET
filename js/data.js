@@ -18,8 +18,11 @@
 // ---------- ① 開催予定イベント ----------
 // date: "2026-07-19" の形式で書くと「イベントまで◯日」を自動計算
 // price: チケット価格（税込・数字のみ）。★ここを変更したら api/_catalog.js の EVENTS も同じ内容に必ず更新してください
-// 記入例: { name: "8日 ◯◯ホール（OSAKA）", date: "2026-08-08", dateLabel: "8月8日(土)", price: 1000 },
 // images: 詳細ページに載せる写真（最大3枚まで）。ファイルパスを追加すると詳細ページに表示される
+// venue: 会場名 / addr: 住所（詳細ページに地図とあわせて表示。addrを入れると自動で地図が出る。
+//        空のままなら地図欄自体が非表示になる＝会場未確定でも壊れない）
+// 記入例: { name: "8日 ◯◯ホール（OSAKA）", date: "2026-08-08", dateLabel: "8月8日(土)", price: 1000,
+//           images: [], venue: "◯◯ホール", addr: "大阪府大阪市◯◯区◯◯1-2-3" },
 const EVENTS = [
   {
     name: "19日 ◯◯ホール（TOKYO）",
@@ -27,6 +30,8 @@ const EVENTS = [
     dateLabel: "7月19日(日)",
     price: 1000,
     images: [],
+    venue: "",
+    addr: "",
   },
   {
     name: "20日 ◯◯ホール（TOKYO）",
@@ -34,6 +39,8 @@ const EVENTS = [
     dateLabel: "7月20日(月)",
     price: 1000,
     images: [],
+    venue: "",
+    addr: "",
   },
   {
     name: "26日 1部 ◯◯（TOKYO）",
@@ -41,6 +48,8 @@ const EVENTS = [
     dateLabel: "7月26日(日)",
     price: 1000,
     images: [],
+    venue: "",
+    addr: "",
   },
   {
     name: "26日 2部 ◯◯（TOKYO）",
@@ -48,6 +57,8 @@ const EVENTS = [
     dateLabel: "7月26日(日)",
     price: 1000,
     images: [],
+    venue: "",
+    addr: "",
   },
 ];
 

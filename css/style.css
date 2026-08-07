@@ -508,6 +508,31 @@ button { font-family: inherit; cursor: pointer; }
 .event-detail-buy { text-align: center; margin-top: 32px; }
 .event-detail-buy .modal-price { font-size: 16px; margin-bottom: 16px; }
 
+.event-detail-map-block { margin-top: 48px; }
+.event-detail-venue { font-size: 16px; margin-bottom: 12px; }
+.event-detail-map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--gray-3);
+  background: var(--gray-1);
+}
+.event-detail-map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.event-detail-share { margin-top: 48px; }
+.event-detail-share h2 { font-size: 16px; margin-bottom: 14px; }
+.share-icons { display: flex; gap: 12px; }
+.share-icons a {
+  width: 38px; height: 38px;
+  border: 1px solid var(--gray-3);
+  display: grid;
+  place-items: center;
+  color: var(--black);
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.share-icons a:hover { border-color: var(--black); background: var(--black); color: var(--white); }
+.share-icons svg { width: 17px; height: 17px; }
+
 /* ---------- Company ---------- */
 .company-flex { display: flex; gap: 64px; align-items: flex-start; }
 .company-text { flex: 1.2; }

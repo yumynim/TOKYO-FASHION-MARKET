@@ -32,4 +32,42 @@ document.addEventListener("DOMContentLoaded", () => {
   }).join("");
 
   document.getElementById("edBuyBtn").addEventListener("click", () => Store.openTicket(i));
+
+  // 会場の地図（住所が入っている場合のみ表示）。
+  // Google Cloudの請求先アカウント登録・APIキーが不要な埋め込み方式
+  // （地図共有の「地図を埋め込む」と同じ仕組み）なので、料金は一切かからない。
+  const mapBlock = document.getElementById("edMapBlock");
+  if (ev.addr) {
+    document.getElementById("edVenue").textContent = ev.venue || "";
+    document.getElementById("edMapFrame").src = `https://www.google.com/maps?q=${encodeURIComponent(ev.addr)}&output=embed`;
+    mapBlock.hidden = false;
+  }
+
+  // シェアボタン（Facebook / X / LINE）。このページのURLと開催情報を渡す
+  const shareUrl = window.location.href;
+  const shareText = `${ev.name}｜${ev.dateLabel} - TOKYO FASHION MARKET`;
+  const shareLinks = [
+    {
+      label: "Facebook",
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      icon: '<circle cx="12" cy="12" r="9"/><path d="M14 8h-1.5A2.5 2.5 0 0 0 10 10.5V12H8v2.5h2V20h2.5v-5.5H14l.5-2.5h-2v-1a1 1 0 0 1 1-1H14V8Z"/>',
+    },
+    {
+      label: "X",
+      url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+      icon: '<path d="M5 5l14 14M19 5 5 19"/>',
+    },
+    {
+      label: "LINE",
+      url: `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`,
+      icon: '<path d="M4 12a8 6.5 0 1 1 8 6.5c-1 0-2-.15-2.9-.4L5 19l.9-3.3A6.3 6.3 0 0 1 4 12Z"/>',
+    },
+  ];
+  document.getElementById("edShare").innerHTML = shareLinks
+    .map(
+      (s) => `<a href="${s.url}" target="_blank" rel="noopener" aria-label="${s.label}でシェア">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">${s.icon}</svg>
+      </a>`
+    )
+    .join("");
 });

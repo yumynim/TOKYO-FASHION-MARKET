@@ -863,7 +863,56 @@ DRESS CODE TOKYOのコードを再度精読して以下を実装した。
    `CHECKIN_PASSWORD`（当日スタッフ用）・`ADMIN_TOKEN_SECRET`（推奨）・`CURRENT_EVENT_ID`（イベント確定後）
 3. Sandboxでテスト決済し、確認メールのQR表示・/checkinでの入場確認を通しでテスト
 
+## 2026-08-06 セッション24（チケット詳細ページに会場の地図とシェアボタンを追加）
+
+ユーザーが参考サイト（refashionmarket.com）のスクリーンショットを提示し、「地図埋め込み」の
+料金体系を質問→無料方式（APIキー不要のiframe埋め込み）で実装。
+
+- `js/data.js`の`EVENTS`各項目に`venue`（会場名）・`addr`（住所）を追加（現状は全て空文字のプレースホルダー。
+  住所が決まったイベントから`addr`を埋めると自動で地図が表示される。空のままなら地図欄自体が非表示）
+- `event-detail.html`に地図ブロック（`#edMapBlock`）と「このイベントをシェア」ブロック（`#edShare`）を追加
+- `js/event-detail.js`: `addr`があれば`https://www.google.com/maps?q=<住所>&output=embed`をiframeに設定
+  （Google Cloudの請求先アカウント登録・APIキーが一切不要な埋め込み方式。料金は発生しない）。
+  シェアボタンはFacebook/X/LINEの3種（このページのURLと開催情報を渡す共有インテントリンク）
+- `vercel.json`のCSPに`frame-src https://www.google.com`を追加（未指定だと`default-src 'self'`に
+  フォールバックし地図iframeがブロックされるため）
+- `css/style.css`に地図ブロック・シェアアイコンのスタイルを追加（サイトのモノクロ基調・既存の
+  フッターSNSアイコンと同じ線画トーンに合わせた白背景版）
+- ブラウザで確認: addr未設定時は地図欄が正しく非表示、addr設定時は地図・シェアボタンとも
+  参考スクリーンショット通りに表示されることを確認（コンソールエラーなし）
+
+## 2026-08-06 セッション25（メールテンプレートのデザイン刷新）
+
+ユーザーが`/console`で初めて実際のメールプレビューを見て「ダサすぎる」と指摘。
+DRESS CODE TOKYOのメール（クリーム色背景＋明朝の「DRESS CODE TOKYO」ロゴ）と方向性が
+被らないよう、TFM本体のロゴ書体（Montserrat・広いレタースペーシング）とフッターの配色
+（黒背景・白文字）に合わせてデザインを作り直した。
+
+- `api/_mailer.js`の`buildEmailHtml`を刷新:
+  - ヘッダー・フッターを黒背景＋白文字に（実サイトの`.site-footer`と同じ配色）
+  - ロゴ表記を`TOKYO` / `FASHION MARKET`の2行、Montserrat・letter-spacing 0.32emの幾何サンセリフに
+    （フッターの`.footer-logo`と同じ書体方向。DCTの明朝体とは対照的なゴシック）
+  - 本文カードに1px黒枠を追加（サイト全体で使われる`--border`と同じ「線で囲む」トーン）
+  - 見出しの上に3px×28pxの黒いアクセントバーを追加、見出しは900 weight・letter-spacing 0.04emで大きく
+  - ボタンのletter-spacingを0.02em→0.08emに（ブランドの他の英字表記と揃える）
+- このテンプレートは`api/_email.js`（購入確認メール）・`api/admin-announcements.js`（お知らせ配信）・
+  `api/admin-inquiries.js`（返信）・`api/contact.js`（お問い合わせ通知/自動返信）が共通で使っているため、
+  1箇所の変更で全メール種別に反映される
+- Node上で`buildEmailHtml`を直接呼び出し、ローカルプレビューでヘッダー黒帯・アクセントバー・
+  フッター黒帯が意図通り表示されることを確認（`/api`はローカル簡易サーバーでは動かないため、
+  `/console`のライブプレビューiframe自体の実機確認は本番差し替え後にユーザー側で確認予定）
+
 # 最終更新
+
+**2026-08-06（セッション25）**
+メールテンプレート（`api/_mailer.js`のbuildEmailHtml）のデザインを刷新。DRESS CODE TOKYOの
+クリーム色×明朝と被らないよう、TFM本体のロゴ書体（Montserrat・広いレタースペーシング）と
+フッターの黒背景配色に合わせた。購入確認・お知らせ配信・お問い合わせ返信・自動返信の全メールに反映。
+
+**2026-08-06（セッション24）**
+チケット詳細ページ（event-detail.html）に会場の地図（Googleマップの無料iframe埋め込み、APIキー不要）と
+SNSシェアボタン（Facebook/X/LINE）を追加。会場が決まったイベントから`js/data.js`の`EVENTS[].addr`を
+埋めれば地図が自動表示される。
 
 **2026-08-05（セッション23）**
 DRESS CODE TOKYOを型に、当日受付システム（/checkin）・受付コードの1人1コード化（entry_passes）・
